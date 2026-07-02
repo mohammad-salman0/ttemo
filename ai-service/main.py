@@ -6,11 +6,17 @@ import joblib
 
 import numpy as np
 
+import yfinance as yf
+
+import pandas as pd
+
+from ta.momentum import RSIIndicator
+
 
 """
-===================================
- LOAD MODEL
-===================================
+========================================
+ LOAD ML MODEL
+========================================
 """
 
 model = joblib.load(
@@ -18,34 +24,30 @@ model = joblib.load(
 )
 
 
+"""
+========================================
+ FASTAPI APP
+========================================
+"""
+
 app = FastAPI()
 
 
 """
-===================================
+========================================
  REQUEST MODEL
-===================================
+========================================
 """
 
 class PredictionInput(BaseModel):
 
-    volatility: float
-
-    momentum: float
-
-    return_30d: float
-
-    growth_score: float
-
-    halal_score: float
-
-    sector_strength: float
+    symbol: str
 
 
 """
-===================================
- ROOT
-===================================
+========================================
+ ROOT ROUTE
+========================================
 """
 
 @app.get("/")
@@ -61,128 +63,585 @@ def root():
 
 
 """
-===================================
- PREDICT
-===================================
+========================================
+ FEATURE EXTRACTION
+========================================
 """
 
-@app.post("/predict")
-
-def predict(data: PredictionInput):
-
-    features = np.array([[
-
-        data.volatility,
-
-        data.momentum,
-
-        data.return_30d,
-
-        data.growth_score,
-
-        data.halal_score,
-
-        data.sector_strength
-
-    ]])
-
+def generate_features(symbol):
 
     """
-    MODEL PREDICTION
+    ========================================
+    DOWNLOAD STOCK DATA
+    ========================================
     """
 
-    prediction = model.predict(
-        features
-    )[0]
+    stock = yf.download(
 
+        f"{symbol}.NS",
 
-    """
-    CONFIDENCE
-    """
+        period="3mo",
 
-    confidence = max(
+        interval="1d",
 
-        model.predict_proba(
-            features
-        )[0]
+        progress=False,
+
+        auto_adjust=True
 
     )
 
 
     """
-    SIGNAL
+    ========================================
+    VALIDATION
+    ========================================
     """
 
-    signal = (
+    if stock.empty:
 
-        "Bullish"
+        raise Exception(
+            "No stock data found"
+        )
 
-        if prediction == 1
 
-        else "Bearish"
+    """
+    ========================================
+    CLEAN DATA
+    ========================================
+    """
+
+    stock = stock.dropna()
+
+
+    """
+    ========================================
+    CLOSE PRICES
+    ========================================
+    """
+
+    close_prices = (
+
+        stock["Close"]
+
+        .squeeze()
 
     )
 
 
     """
-    RISK SCORE
-    LOWER VOLATILITY = LOWER RISK
+    ========================================
+    RSI
+    ========================================
     """
 
-    risk_score = max(
+    rsi_indicator = RSIIndicator(
 
-        1,
+        close=close_prices,
+
+        window=14
+
+    )
+
+    stock["RSI"] = (
+        rsi_indicator.rsi()
+    )
+
+
+    """
+    ========================================
+    DAILY RETURNS
+    ========================================
+    """
+
+    stock["Returns"] = (
+
+        close_prices
+
+        .pct_change()
+
+        * 100
+
+    )
+
+
+    """
+    ========================================
+    REMOVE NULL VALUES
+    ========================================
+    """
+
+    stock = stock.dropna()
+
+
+    """
+    ========================================
+    VOLATILITY (%)
+    ========================================
+    """
+
+    volatility = float(
+
+        stock["Returns"]
+
+        .std()
+
+    )
+
+
+    """
+    ========================================
+    MOMENTUM (%)
+    ========================================
+    """
+
+    momentum = float(
+
+        (
+
+            (
+
+                close_prices.iloc[-1]
+
+                -
+
+                close_prices.iloc[-10]
+
+            )
+
+            /
+
+            close_prices.iloc[-10]
+
+        ) * 100
+
+    )
+
+
+    """
+    ========================================
+    30 DAY RETURN (%)
+    ========================================
+    """
+
+    return_30d = float(
+
+        (
+
+            (
+
+                close_prices.iloc[-1]
+
+                -
+
+                close_prices.iloc[-30]
+
+            )
+
+            /
+
+            close_prices.iloc[-30]
+
+        ) * 100
+
+    )
+
+
+    """
+    ========================================
+    RSI VALUE
+    ========================================
+    """
+
+    latest_rsi = float(
+
+        stock["RSI"].iloc[-1]
+
+    )
+
+
+    """
+    ========================================
+    GROWTH SCORE
+    ========================================
+    """
+
+    growth_score = max(
+
+        40,
 
         min(
+
             100,
-            int(data.volatility)
+
+            50 + return_30d
+
         )
 
     )
 
 
     """
-    INVESTMENT STRENGTH
+    ========================================
+    HALAL SCORE
+    ========================================
     """
 
-    investment_strength = int(
+    halal_score = 85
 
-        (
 
-            data.growth_score
+    """
+    ========================================
+    SECTOR STRENGTH
+    ========================================
+    """
 
-            +
+    sector_strength = max(
 
-            data.halal_score
+        50,
 
-            +
+        min(
 
-            data.sector_strength
+            100,
 
-        ) / 3
+            60 + momentum
+
+        )
 
     )
 
 
     """
-    RESPONSE
+    ========================================
+    FINAL FEATURES
+    ========================================
     """
 
     return {
 
-        "prediction":
-        int(prediction),
+        "volatility":
+        round(volatility, 2),
 
-        "signal":
-        signal,
+        "momentum":
+        round(momentum, 2),
 
-        "confidence":
-        round(confidence * 100, 2),
+        "return_30d":
+        round(return_30d, 2),
 
-        "risk_score":
-        risk_score,
+        "growth_score":
+        round(growth_score, 2),
 
-        "investment_strength":
-        investment_strength,
+        "halal_score":
+        halal_score,
+
+        "sector_strength":
+        round(sector_strength, 2),
+
+        "rsi":
+        round(latest_rsi, 2),
 
     }
+
+
+"""
+========================================
+ PREDICT ROUTE
+========================================
+"""
+
+@app.post("/predict")
+
+def predict(data: PredictionInput):
+
+    try:
+
+        """
+        ========================================
+        GENERATE FEATURES
+        ========================================
+        """
+
+        features_data = generate_features(
+            data.symbol
+        )
+
+
+        """
+        ========================================
+        MODEL INPUT
+        ========================================
+        """
+
+        features = np.array([[
+
+            features_data["volatility"],
+
+            features_data["momentum"],
+
+            features_data["return_30d"],
+
+            features_data["growth_score"],
+
+            features_data["halal_score"],
+
+            features_data["sector_strength"]
+
+        ]])
+
+
+        """
+        ========================================
+        ML PREDICTION
+        ========================================
+        """
+
+        prediction = model.predict(
+            features
+        )[0]
+
+
+        """
+        ========================================
+        BASE CONFIDENCE
+        ========================================
+        """
+
+        base_confidence = max(
+
+            model.predict_proba(
+                features
+            )[0]
+
+        )
+
+
+        """
+        ========================================
+        DYNAMIC CONFIDENCE MODIFIER
+        ========================================
+        """
+
+        confidence_modifier = 0
+
+
+        """
+        LOW VOLATILITY BOOST
+        """
+
+        if (
+            features_data["volatility"]
+            < 2
+        ):
+
+            confidence_modifier += 0.05
+
+
+        """
+        STRONG MOMENTUM BOOST
+        """
+
+        if (
+            features_data["momentum"]
+            > 3
+        ):
+
+            confidence_modifier += 0.05
+
+
+        """
+        STRONG RETURNS BOOST
+        """
+
+        if (
+            features_data["return_30d"]
+            > 10
+        ):
+
+            confidence_modifier += 0.04
+
+
+        """
+        EXTREME RSI REDUCTION
+        """
+
+        if (
+
+            features_data["rsi"] > 75
+
+            or
+
+            features_data["rsi"] < 25
+
+        ):
+
+            confidence_modifier -= 0.08
+
+
+        """
+        HIGH VOLATILITY REDUCTION
+        """
+
+        if (
+            features_data["volatility"]
+            > 5
+        ):
+
+            confidence_modifier -= 0.07
+
+
+        """
+        FINAL CONFIDENCE
+        """
+
+        confidence = min(
+
+            0.99,
+
+            max(
+
+                0.50,
+
+                base_confidence
+                + confidence_modifier
+
+            )
+
+        )
+
+
+        """
+        ========================================
+        SIGNAL
+        ========================================
+        """
+
+        signal = (
+
+            "Bullish"
+
+            if prediction == 1
+
+            else "Bearish"
+
+        )
+
+
+        """
+        ========================================
+        INVESTMENT STRENGTH
+        ========================================
+        """
+
+        investment_strength = int(
+
+            (
+
+                features_data["growth_score"]
+
+                +
+
+                features_data["halal_score"]
+
+                +
+
+                features_data["sector_strength"]
+
+            ) / 3
+
+        )
+
+
+        """
+        ========================================
+        RISK SCORE
+        ========================================
+        """
+
+        risk_score = int(
+
+            min(
+
+                100,
+
+                max(
+
+                    1,
+
+                    features_data["volatility"]
+                    * 15
+
+                )
+
+            )
+
+        )
+
+
+        """
+        ========================================
+        FINAL RESPONSE
+        ========================================
+        """
+
+        return {
+
+            "prediction":
+            int(prediction),
+
+            "signal":
+            signal,
+
+            "confidence":
+            round(
+                confidence * 100,
+                2
+            ),
+
+            "risk_score":
+            risk_score,
+
+            "investment_strength":
+            investment_strength,
+
+            "rsi":
+            features_data["rsi"],
+
+            "volatility":
+            features_data["volatility"],
+
+            "momentum":
+            features_data["momentum"],
+
+            "return_30d":
+            features_data["return_30d"],
+
+            "growth_score":
+            features_data["growth_score"],
+
+            "sector_strength":
+            features_data["sector_strength"],
+
+            "halal_score":
+            features_data["halal_score"],
+
+        }
+
+
+    except Exception as e:
+
+        return {
+
+            "error":
+            str(e)
+
+        }
+
+
+"""
+========================================
+ RUN SERVER
+========================================
+
+python -m uvicorn main:app --reload
+
+========================================
+"""

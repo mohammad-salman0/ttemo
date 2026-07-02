@@ -1,331 +1,72 @@
 "use client";
 
-import {
- Table,
- TableBody,
- TableCell,
- TableHead,
- TableHeader,
- TableRow,
-} from "@/components/ui/table";
-
-import { useRouter }
- from "next/navigation";
-
-
-type Stock = {
-
- symbol: string;
-
- companyName: string;
-
- price: number | null;
-
- halalStatus: string;
-
- change: number;
-
- complianceScore: number;
-
-};
-
-
-type Props = {
-
- stocks: Stock[];
-
-};
-
-
-export default function StockTable({
- stocks,
-}: Props) {
-
- const router =
-  useRouter();
-
-
- return (
-
-  <div
-   className="
-    bg-white
-    rounded-3xl
-    border
-    shadow-sm
-    overflow-hidden
-   "
-  >
-
-   <Table>
-
-    <TableHeader>
-
-     <TableRow>
-
-      <TableHead>
-       Symbol
-      </TableHead>
-
-      <TableHead>
-       Company
-      </TableHead>
-
-      <TableHead>
-       Price
-      </TableHead>
-
-      <TableHead>
-       Change
-      </TableHead>
-
-      <TableHead>
-       Compliance
-      </TableHead>
-
-      <TableHead>
-       Status
-      </TableHead>
-
-     </TableRow>
-
-    </TableHeader>
-
-
-    <TableBody>
-
-     {stocks.map((stock) => (
-
-      <TableRow
-
-       key={stock.symbol}
-
-       onClick={() =>
-        router.push(
-         `/stocks/${stock.symbol}`
-        )
-       }
-
-       className="
-        cursor-pointer
-        transition-all
-        hover:bg-gray-50
-       "
-      >
-
-       {/* SYMBOL */}
-       <TableCell
-        className="
-         font-bold
-         text-gray-900
-        "
-       >
-
-        {stock.symbol}
-
-       </TableCell>
-
-
-       {/* COMPANY */}
-       <TableCell>
-
-        <div>
-
-         <p
-          className="
-           font-medium
-           text-gray-900
-          "
-         >
-
-          {stock.companyName}
-
-         </p>
-
-        </div>
-
-       </TableCell>
-
-
-       {/* PRICE */}
-       <TableCell>
-
-        {
-         stock.price !== null
-
-          ? (
-
-           <span
-            className="
-             font-semibold
-            "
-           >
-
-            ₹
-            {" "}
-
-            {
-             stock.price.toFixed(2)
-            }
-
-           </span>
-
-          )
-
-          : "N/A"
-        }
-
-       </TableCell>
-
-
-       {/* CHANGE */}
-       <TableCell>
-
-        <span
-         className={`
-
-          font-semibold
-
-          ${
-           stock.change >= 0
-
-            ? "text-emerald-600"
-
-            : "text-red-600"
-          }
-
-         `}
-        >
-
-         {
-          stock.change >= 0
-           ? "+"
-           : ""
-         }
-
-         {stock.change}%
-
-        </span>
-
-       </TableCell>
-
-
-       {/* COMPLIANCE */}
-       <TableCell>
-
-        <div
-         className="
-          flex
-          items-center
-          gap-3
-         "
-        >
-
-         <div
-          className="
-           w-24
-           h-2
-           bg-gray-100
-           rounded-full
-           overflow-hidden
-          "
-         >
-
-          <div
-
-           className={`
-
-            h-full
-            rounded-full
-
-            ${
-             stock.complianceScore >= 85
-
-              ? "bg-emerald-500"
-
-              : stock.complianceScore >= 70
-
-              ? "bg-yellow-500"
-
-              : "bg-red-500"
-            }
-
-           `}
-
-           style={{
-
-            width:
-             `${stock.complianceScore}%`
-
-           }}
-
-          />
-
-         </div>
-
-
-         <span
-          className="
-           text-sm
-           font-semibold
-           text-blue-600
-          "
-         >
-
-          {stock.complianceScore}%
-
-         </span>
-
-        </div>
-
-       </TableCell>
-
-
-       {/* HALAL STATUS */}
-       <TableCell>
-
-        <span
-         className={`
-
-          px-4
-          py-2
-          rounded-full
-          text-sm
-          font-medium
-
-          ${
-           stock.halalStatus ===
-           "Halal"
-
-            ? "bg-emerald-100 text-emerald-700"
-
-            : stock.halalStatus ===
-              "Review Needed"
-
-            ? "bg-yellow-100 text-yellow-700"
-
-            : "bg-red-100 text-red-700"
-          }
-
-         `}
-        >
-
-         {stock.halalStatus}
-
-        </span>
-
-       </TableCell>
-
-      </TableRow>
-
-     ))}
-
-    </TableBody>
-
-   </Table>
-
-  </div>
-
- );
-
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useRouter } from "next/navigation";
+import { ArrowUpRight, ArrowDownRight } from "lucide-react";
+
+type Stock = { symbol:string; companyName:string; price:number|null; halalStatus:string; change:number; complianceScore:number }
+type Props = { stocks: Stock[] }
+
+const halalStyle = (s: string) => ({
+  "Halal":        { background:"var(--up-bg)",   color:"var(--up)",   border:"1px solid var(--up-border)" },
+  "Non-Halal":    { background:"var(--down-bg)", color:"var(--down)", border:"1px solid var(--down-border)" },
+  "Review Needed":{ background:"var(--warn-bg)", color:"var(--warn)", border:"none" },
+}[s] || { background:"var(--bg-hover)", color:"var(--text-muted)", border:"none" })
+
+export default function StockTable({ stocks }: Props) {
+  const router = useRouter()
+  const cols = ["Symbol", "Company", "Price", "Change", "Status"]
+
+  return (
+    <div style={{ background:"var(--bg-surface)", border:"1px solid var(--border)", borderRadius:12, overflow:"hidden", boxShadow:"var(--shadow-sm)" }}>
+      <Table>
+        <TableHeader>
+          <TableRow style={{ background:"var(--bg-base)", borderBottom:"1px solid var(--border)" }}>
+            {cols.map(c => (
+              <TableHead key={c} style={{ fontSize:11, fontWeight:700, letterSpacing:"0.06em", color:"var(--text-muted)", textTransform:"uppercase", padding:"12px 16px", borderBottom:"none" }}>
+                {c}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {stocks.map((s) => (
+            <TableRow key={s.symbol}
+              onClick={() => router.push(`/stocks/${s.symbol}`)}
+              style={{ borderBottom:"1px solid var(--border)", cursor:"pointer", transition:"background 0.12s" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)" }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent" }}
+            >
+              <TableCell style={{ padding:"12px 16px" }}>
+                <span style={{ fontSize:13, fontWeight:800, color:"var(--text-primary)", fontFamily:"'JetBrains Mono', monospace" }}>{s.symbol}</span>
+              </TableCell>
+
+              <TableCell style={{ padding:"12px 16px" }}>
+                <span style={{ fontSize:13, color:"var(--text-secondary)" }}>{s.companyName}</span>
+              </TableCell>
+
+              <TableCell style={{ padding:"12px 16px" }}>
+                <span style={{ fontSize:13, fontWeight:700, color:"var(--text-primary)", fontFamily:"'JetBrains Mono', monospace" }}>
+                  {s.price != null ? `₹${s.price.toFixed(2)}` : "—"}
+                </span>
+              </TableCell>
+
+              <TableCell style={{ padding:"12px 16px" }}>
+                <span style={{ display:"flex", alignItems:"center", gap:3, fontSize:12, fontWeight:700, color: s.change>=0 ? "var(--up)" : "var(--down)", fontFamily:"'JetBrains Mono', monospace" }}>
+                  {s.change >= 0 ? <ArrowUpRight size={13}/> : <ArrowDownRight size={13}/>}
+                  {s.change >= 0 ? "+" : ""}{s.change}%
+                </span>
+              </TableCell>
+
+              <TableCell style={{ padding:"12px 16px" }}>
+                <span style={{ fontSize:11, fontWeight:700, padding:"3px 8px", borderRadius:5, ...halalStyle(s.halalStatus) }}>
+                  {s.halalStatus}
+                </span>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
 }

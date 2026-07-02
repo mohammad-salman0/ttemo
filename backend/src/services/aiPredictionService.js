@@ -1,590 +1,164 @@
-const {
- getScreenedStocks,
-} = require(
- "../services/screeningService"
-)
+const axios = require("axios")
 
-const {
- getLivePrices,
-} = require(
- "../services/livePriceService"
-)
+/*
+========================================
+ AI PREDICTION SERVICE
+========================================
+ Calls the FastAPI ML microservice's /predict
+ endpoint and returns the prediction result.
 
-const {
- getAIPrediction,
-} = require(
- "../services/aiPredictionService"
-)
+ FastAPI service must be running:
+   python -m uvicorn main:app --reload
 
-const YahooFinance =
- require("yahoo-finance2")
- .default
+ Default URL: http://127.0.0.1:8000
+========================================
+*/
 
-const yahooFinance =
- new YahooFinance()
+const AI_SERVICE_URL =
+
+ process.env.AI_SERVICE_URL ||
+
+ "http://127.0.0.1:8000"
 
 
 /*
 ========================================
- GET ALL STOCKS
+ REQUEST TIMEOUT
+========================================
+ Feature extraction in FastAPI downloads
+ 3 months of data via yfinance per request,
+ which can be slow. Give it a generous
+ timeout rather than failing fast and
+ falling back to fake data unnecessarily.
 ========================================
 */
 
-const getAllStocks =
- async (req, res) => {
-
-  try {
-
-   const screenedStocks =
-    await getScreenedStocks()
-
-   const livePrices =
-    await getLivePrices()
-
-
-   const mergedStocks =
-    screenedStocks.map(
-     (stock) => {
-
-      const liveData =
-       livePrices.find(
-
-        (live) =>
-
-         live.symbol
-          .toUpperCase()
-
-         ===
-
-         stock.symbol
-          .toUpperCase()
-
-       )
-
-
-      return {
-
-       ...stock,
-
-       price:
-
-        liveData?.price != null
-
-         ? liveData.price
-
-         : (
-            stock.symbol.length * 137
-           ) + 500,
-
-
-       change:
-
-        liveData?.change != null
-
-         ? liveData.change
-
-         : (
-            (stock.symbol.length % 5)
-            + 0.75
-           ),
-
-      }
-
-     }
-    )
-
-
-   res.json(
-    mergedStocks
-   )
-
-  } catch (error) {
-
-   console.log(error)
-
-   res.status(500).json({
-
-    message:
-     "Failed to fetch stocks",
-
-   })
-
-  }
-
-}
+const REQUEST_TIMEOUT_MS = 15000
 
 
 /*
 ========================================
- GET SINGLE STOCK
+ GET AI PREDICTION
 ========================================
 */
 
-const getStockBySymbol =
- async (req, res) => {
+exports.getAIPrediction =
+
+ async ({ symbol }) => {
 
   try {
 
-   const screenedStocks =
-    await getScreenedStocks()
+   /*
+   ========================================
+   STRIP .NS SUFFIX IF PRESENT
+   ========================================
+   FastAPI's generate_features() appends
+   ".NS" itself, so we should NOT send
+   a symbol that already has it.
+   ========================================
+   */
 
-   const livePrices =
-    await getLivePrices()
+   const cleanSymbol =
 
-
-   const stock =
-    screenedStocks.find(
-
-     (s) =>
-
-      s.symbol
-       .toUpperCase()
-
-      ===
-
-      req.params.symbol
-       .toUpperCase()
-
+    symbol.replace(
+     /\.NS$/i,
+     ""
     )
 
 
-   /*
-   STOCK NOT FOUND
-   */
+   const response =
+    await axios.post(
 
-   if (!stock) {
-
-    return res.status(404).json({
-
-     message:
-      "Stock not found",
-
-    })
-
-   }
-
-
-   /*
-   LIVE MARKET DATA
-   */
-
-   const liveData =
-    livePrices.find(
-
-     (live) =>
-
-      live.symbol
-       .toUpperCase()
-
-      ===
-
-      stock.symbol
-       .toUpperCase()
-
-    )
-
-
-   /*
-   FALLBACK PRICE
-   */
-
-   const price =
-
-    liveData?.price != null
-
-     ? liveData.price
-
-     : (
-        stock.symbol.length * 137
-       ) + 500
-
-
-   /*
-   CHANGE %
-   */
-
-   const change =
-
-    liveData?.change != null
-
-     ? liveData.change
-
-     : (
-        (stock.symbol.length % 5)
-        + 0.75
-       )
-
-
-   /*
-   ====================================
-   AI FEATURES
-   ====================================
-   */
-
-   const volatility =
-    Number(
-
-     (
-      Math.random() * 40 + 10
-     ).toFixed(2)
-
-    )
-
-
-   const momentum =
-    Number(
-
-     (
-      change * 8
-     ).toFixed(2)
-
-    )
-
-
-   const return_30d =
-    Number(
-
-     (
-      change * 4
-     ).toFixed(2)
-
-    )
-
-
-   const growth_score =
-    Math.min(
-
-     95,
-
-     stock.complianceScore
-     + 5
-
-    )
-
-
-   const halal_score =
-    stock.complianceScore
-
-
-   const sector_strength =
-    Number(
-
-     (
-      Math.random() * 30 + 65
-     ).toFixed(2)
-
-    )
-
-
-   /*
-   ====================================
-   AI PREDICTION
-   ====================================
-   */
-
-   const aiResult =
-    await getAIPrediction({
-
-     volatility,
-
-     momentum,
-
-     return_30d,
-
-     growth_score,
-
-     halal_score,
-
-     sector_strength,
-
-    })
-
-
-   /*
-   ====================================
-   AI REASONING
-   ====================================
-   */
-
-   let aiReason = ""
-
-
-   if (
-    aiResult.prediction === 1
-   ) {
-
-    aiReason =
-
-     `${stock.companyName} shows strong bullish indicators driven by positive momentum, stable halal compliance metrics, and favorable sector performance.`
-
-   }
-
-   else {
-
-    aiReason =
-
-     `${stock.companyName} currently shows weaker momentum and increased volatility, indicating a cautious short-term outlook.`
-
-   }
-
-
-   /*
-   ====================================
-   RESPONSE
-   ====================================
-   */
-
-   res.json({
-
-    ...stock,
-
-    price,
-
-    change,
-
-    /*
-    AI ENGINE
-    */
-
-    aiPrediction:
-     aiResult.prediction,
-
-    aiSignal:
-     aiResult.signal,
-
-    aiConfidence:
-     aiResult.confidence,
-
-    /*
-    AI ANALYTICS
-    */
-
-    volatility,
-
-    momentum,
-
-    return30d:
-     return_30d,
-
-    riskScore:
-     aiResult.risk_score,
-
-    investmentStrength:
-     aiResult.investment_strength,
-
-    sectorStrength:
-     sector_strength,
-
-    /*
-    AI REASONING
-    */
-
-    aiReason,
-
-   })
-
-  } catch (error) {
-
-   console.log(error)
-
-   res.status(500).json({
-
-    message:
-     "Failed to fetch stock",
-
-   })
-
-  }
-
-}
-
-
-/*
-========================================
- GET STOCK HISTORY
-========================================
-*/
-
-const getStockHistory =
- async (req, res) => {
-
-  try {
-
-   const { symbol } =
-    req.params
-
-   const {
-    range = "1mo",
-    interval = "1d",
-   } = req.query
-
-
-   const now =
-    new Date()
-
-   let period1 =
-    new Date()
-
-
-   switch (range) {
-
-    case "1d":
-
-     period1.setDate(
-      now.getDate() - 1
-     )
-
-     break
-
-
-    case "5d":
-
-     period1.setDate(
-      now.getDate() - 5
-     )
-
-     break
-
-
-    case "1mo":
-
-     period1.setMonth(
-      now.getMonth() - 1
-     )
-
-     break
-
-
-    case "6mo":
-
-     period1.setMonth(
-      now.getMonth() - 6
-     )
-
-     break
-
-
-    case "1y":
-
-     period1.setFullYear(
-      now.getFullYear() - 1
-     )
-
-     break
-
-
-    default:
-
-     period1.setMonth(
-      now.getMonth() - 1
-     )
-
-   }
-
-
-   const result =
-    await yahooFinance.chart(
-
-     `${symbol}.NS`,
+     `${AI_SERVICE_URL}/predict`,
 
      {
 
-      period1,
-      period2: now,
-      interval,
+      symbol:
+       cleanSymbol,
+
+     },
+
+     {
+
+      timeout:
+       REQUEST_TIMEOUT_MS,
 
      }
 
     )
 
 
-   if (
-    !result ||
-    !result.quotes
-   ) {
+   const data =
+    response.data
 
-    return res.status(404).json({
 
-     message:
-      "No historical data found",
+   /*
+   ========================================
+   FASTAPI RETURNED AN ERROR PAYLOAD
+   ========================================
+   FastAPI's /predict route catches its own
+   exceptions and returns { error: "..." }
+   with a 200 status instead of throwing,
+   so we have to check for this explicitly —
+   axios won't treat it as a failed request.
+   ========================================
+   */
 
-    })
+   if (data.error) {
+
+    throw new Error(
+
+     `AI service error: ${data.error}`
+
+    )
 
    }
 
 
-   const candles =
-    result.quotes
-
-     .filter(
-
-      (q) =>
-
-       q.open &&
-       q.high &&
-       q.low &&
-       q.close
-
-     )
-
-     .map((q) => ({
-
-      time:
-       Math.floor(
-
-        new Date(
-         q.date
-        ).getTime() / 1000
-
-       ),
-
-      open:
-       Number(
-        q.open.toFixed(2)
-       ),
-
-      high:
-       Number(
-        q.high.toFixed(2)
-       ),
-
-      low:
-       Number(
-        q.low.toFixed(2)
-       ),
-
-      close:
-       Number(
-        q.close.toFixed(2)
-       ),
-
-     }))
-
-
-   res.json(
-    candles
-   )
+   return data
 
   } catch (error) {
 
-   console.log(error)
+   /*
+   ========================================
+   DISTINGUISH FAILURE TYPES
+   ========================================
+   Helps debugging — "connection refused"
+   means FastAPI isn't running at all,
+   "timeout" means it's running but slow,
+   anything else is a real error from
+   inside the prediction logic.
+   ========================================
+   */
 
-   res.status(500).json({
+   if (
+    error.code === "ECONNREFUSED"
+   ) {
 
-    message:
-     "Failed to fetch stock history",
+    throw new Error(
 
-   })
+     `AI service unreachable at ${AI_SERVICE_URL} — is FastAPI running? (python -m uvicorn main:app --reload)`
+
+    )
+
+   }
+
+
+   if (
+    error.code === "ECONNABORTED"
+   ) {
+
+    throw new Error(
+
+     `AI service timed out after ${REQUEST_TIMEOUT_MS}ms for symbol ${symbol}`
+
+    )
+
+   }
+
+
+   throw error
 
   }
 
-}
-
-
-module.exports = {
-
- getAllStocks,
- getStockBySymbol,
- getStockHistory,
-
-}
+ }

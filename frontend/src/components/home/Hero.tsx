@@ -1,736 +1,157 @@
+// src/components/home/Hero.tsx
 "use client"
 
-import Link
- from "next/link"
+import Link from "next/link"
+import { motion, AnimatePresence } from "framer-motion"
+import { useEffect, useState } from "react"
+import { ShieldCheck, Brain, TrendingUp } from "lucide-react"
 
-import {
- motion,
- AnimatePresence,
-} from "framer-motion"
+const images = [
+  "/media/Screenshot 2026-06-08 211625.png",
+  "/media/Screenshot 2026-06-08 211641.png",
+  "/media/Screenshot 2026-06-08 211705.png",
+  "/media/Screenshot 2026-06-08 213012.png",
+]
 
-import {
- useEffect,
- useState,
-} from "react"
-
+const features = [
+  { icon: ShieldCheck, label: "Halal Stock Screening" },
+  { icon: Brain,       label: "AI Portfolio Insights" },
+  { icon: TrendingUp,  label: "Zero Advisory Fees" },
+]
 
 export default function Hero() {
-
- /*
- ===================================
- IMAGES
- ===================================
- */
-
- const images = [
-
-  "/media/Screenshot 2026-06-07 200826.png",
-
-  "/media/Screenshot 2026-06-07 200713.png",
-
-  "/media/Screenshot 2026-06-07 200907.png",
-
-  "/media/Screenshot 2026-06-07 183922.png",
-
- ]
-
-
- /*
- ===================================
- STATE
- ===================================
- */
-
- const [currentImage,
-  setCurrentImage] =
-   useState(0)
-
-
- /*
- ===================================
- AUTO SLIDER
- ===================================
- */
-
- useEffect(() => {
-
-  const interval =
-   setInterval(() => {
-
-    setCurrentImage(
-
-     (prev) =>
-
-      (prev + 1) %
-      images.length
-
-    )
-
-   }, 5500)
-
-  return () =>
-   clearInterval(interval)
-
- }, [])
-
-
- return (
-
-  <section
-   className="
-    relative
-    overflow-hidden
-    w-full
-    py-28
-    px-6
-    lg:px-20
-
-    bg-gradient-to-b
-    from-blue-50
-    via-white
-    to-white
-   "
-  >
-
-   {/* FLOATING BACKGROUND */}
-
-   <motion.div
-
-    animate={{
-
-     y: [0, -20, 0],
-
-    }}
-
-    transition={{
-
-     duration: 8,
-     repeat: Infinity,
-
-    }}
-
-    className="
-     absolute
-     top-[-120px]
-     right-[-120px]
-
-     w-[350px]
-     h-[350px]
-
-     bg-blue-200/40
-
-     rounded-full
-     blur-3xl
-    "
-   />
-
-
-   <motion.div
-
-    animate={{
-
-     y: [0, 20, 0],
-
-    }}
-
-    transition={{
-
-     duration: 10,
-     repeat: Infinity,
-
-    }}
-
-    className="
-     absolute
-     bottom-[-120px]
-     left-[-120px]
-
-     w-[300px]
-     h-[300px]
-
-     bg-cyan-100/40
-
-     rounded-full
-     blur-3xl
-    "
-   />
-
-
-   <div
-    className="
-     max-w-7xl
-     mx-auto
-
-     grid
-     md:grid-cols-2
-
-     gap-16
-     items-center
-
-     relative
-     z-10
-    "
-   >
-
-    {/* LEFT CONTENT */}
-
-    <motion.div
-
-     initial={{
-      opacity: 0,
-      y: 40,
-     }}
-
-     animate={{
-      opacity: 1,
-      y: 0,
-     }}
-
-     transition={{
-      duration: 0.8,
-     }}
-    >
-
-     {/* BADGE */}
-
-     <motion.div
-
-      initial={{
-       opacity: 0,
-       y: 20,
-      }}
-
-      animate={{
-       opacity: 1,
-       y: 0,
-      }}
-
-      transition={{
-       delay: 0.2,
-      }}
-
-      className="
-       inline-flex
-       items-center
-       gap-2
-
-       px-5
-       py-2
-
-       rounded-full
-
-       bg-blue-100
-       text-blue-700
-
-       font-medium
-       text-sm
-
-       mb-6
-      "
-     >
-
-      AI Powered Halal Investing
-
-     </motion.div>
-
-
-     {/* HEADING */}
-
-     <motion.h1
-
-      initial={{
-       opacity: 0,
-       y: 30,
-      }}
-
-      animate={{
-       opacity: 1,
-       y: 0,
-      }}
-
-      transition={{
-       delay: 0.3,
-      }}
-
-      className="
-       text-6xl
-       lg:text-7xl
-
-       font-bold
-
-       leading-tight
-       tracking-tight
-
-       text-gray-900
-      "
-     >
-
-      Investing made
-
-      <span
-       className="
-        text-blue-600
-       "
-      >
-
-       {" "}
-       Ethical
-
-      </span>
-
-     </motion.h1>
-
-
-     {/* DESCRIPTION */}
-
-     <motion.p
-
-      initial={{
-       opacity: 0,
-       y: 30,
-      }}
-
-      animate={{
-       opacity: 1,
-       y: 0,
-      }}
-
-      transition={{
-       delay: 0.5,
-      }}
-
-      className="
-       mt-8
-       text-xl
-       leading-10
-
-       text-gray-600
-       max-w-2xl
-      "
-     >
-
-      TwinTrade empowers investors
-      to trade confidently with
-      halal-compliant screening,
-      AI insights, and transparent
-      financial tools built for
-      modern ethical investing.
-
-     </motion.p>
-
-
-     {/* BUTTONS */}
-
-     <motion.div
-
-      initial={{
-       opacity: 0,
-       y: 20,
-      }}
-
-      animate={{
-       opacity: 1,
-       y: 0,
-      }}
-
-      transition={{
-       delay: 0.7,
-      }}
-
-      className="
-       flex
-       gap-5
-       mt-10
-      "
-     >
-
-      <Link href="/signup">
-
-       <motion.button
-
-        whileHover={{
-         scale: 1.05,
-        }}
-
-        whileTap={{
-         scale: 0.98,
-        }}
-
-        className="
-         px-8
-         py-4
-
-         bg-blue-600
-         hover:bg-blue-700
-
-         text-white
-
-         rounded-2xl
-
-         transition
-
-         text-lg
-         font-medium
-
-         shadow-lg
-         shadow-blue-200
-        "
-       >
-
-        Start Investing
-
-       </motion.button>
-
-      </Link>
-
-
-      <Link href="/about">
-
-       <motion.button
-
-        whileHover={{
-         scale: 1.05,
-        }}
-
-        whileTap={{
-         scale: 0.98,
-        }}
-
-        className="
-         px-8
-         py-4
-
-         border
-         border-gray-300
-
-         rounded-2xl
-
-         hover:bg-gray-100
-
-         transition
-
-         text-lg
-         font-medium
-        "
-       >
-
-        Learn More
-
-       </motion.button>
-
-      </Link>
-
-     </motion.div>
-
-
-     {/* FEATURES */}
-
-     <motion.div
-
-      initial={{
-       opacity: 0,
-       y: 20,
-      }}
-
-      animate={{
-       opacity: 1,
-       y: 0,
-      }}
-
-      transition={{
-       delay: 0.9,
-      }}
-
-      className="
-       flex
-       flex-wrap
-
-       gap-8
-       mt-12
-
-       text-sm
-       text-gray-500
-       font-medium
-      "
-     >
-
-      <motion.p
-       whileHover={{
-        y: -2,
-       }}
-      >
-
-       ✔ Halal Stock Screening
-
-      </motion.p>
-
-
-      <motion.p
-       whileHover={{
-        y: -2,
-       }}
-      >
-
-       ✔ AI Portfolio Insights
-
-      </motion.p>
-
-
-      <motion.p
-       whileHover={{
-        y: -2,
-       }}
-      >
-
-       ✔ Zero Advisory Fees
-
-      </motion.p>
-
-     </motion.div>
-
-    </motion.div>
-
-
-    {/* RIGHT VISUALS */}
-
-    <motion.div
-
-     initial={{
-      opacity: 0,
-      scale: 0.9,
-     }}
-
-     animate={{
-      opacity: 1,
-      scale: 1,
-     }}
-
-     transition={{
-      duration: 0.8,
-      delay: 0.4,
-     }}
-
-     className="
-      relative
-      flex
-      items-center
-      justify-center
-     "
-    >
-
-     {/* GLOW */}
-
-     <div
-      className="
-       absolute
-
-       w-[650px]
-       h-[650px]
-
-       bg-blue-200/30
-
-       rounded-full
-
-       blur-3xl
-
-       z-0
-      "
-     />
-
-
-     {/* WINDOW */}
-
-     <div
-      className="
-       relative
-
-       z-20
-
-       w-full
-       max-w-4xl
-
-       rounded-[32px]
-
-       bg-white/70
-       backdrop-blur-xl
-
-       border
-       border-white
-
-       shadow-2xl
-
-       overflow-hidden
-      "
-     >
-
-      {/* TOP BAR */}
-
-      <div
-       className="
-        flex
-        items-center
-        gap-2
-
-        px-6
-        py-4
-
-        border-b
-        bg-white/80
-       "
-      >
-
-       <div
-        className="
-         w-3
-         h-3
-         rounded-full
-         bg-red-400
-        "
-       />
-
-       <div
-        className="
-         w-3
-         h-3
-         rounded-full
-         bg-yellow-400
-        "
-       />
-
-       <div
-        className="
-         w-3
-         h-3
-         rounded-full
-         bg-green-400
-        "
-       />
-
+  const [currentImage, setCurrentImage] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImage(prev => (prev + 1) % images.length)
+    }, 5500)
+    return () => clearInterval(interval)
+  }, [])
+
+  return (
+    <section style={{
+      position: "relative", overflow: "hidden", width: "100%",
+      padding: "96px 24px", background: "var(--bg-base)",
+    }}>
+
+      {/* Background blobs */}
+      <div style={{
+        position: "absolute", top: -100, right: -100, width: 400, height: 400,
+        borderRadius: "50%", background: "var(--accent-teal-bg)", filter: "blur(80px)",
+        pointerEvents: "none",
+      }} />
+      <div style={{
+        position: "absolute", bottom: -100, left: -100, width: 350, height: 350,
+        borderRadius: "50%", background: "var(--indigo-bg)", filter: "blur(80px)",
+        pointerEvents: "none",
+      }} />
+
+      <div style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center", position: "relative", zIndex: 1 }}>
+
+        {/* LEFT */}
+        <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
+
+          {/* Badge */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "7px 16px", borderRadius: 999, background: "var(--accent-teal-bg)", border: "1px solid var(--accent-teal-border)", color: "var(--accent-teal)", fontSize: 12, fontWeight: 600, marginBottom: 24, letterSpacing: "0.03em" }}>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent-teal)", display: "inline-block" }} className="live-dot" />
+            AI Powered Halal Investing
+          </motion.div>
+
+          {/* Heading */}
+          <motion.h1 initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+            style={{ fontSize: "clamp(42px, 6vw, 68px)", fontWeight: 800, lineHeight: 1.08, letterSpacing: "-0.03em", color: "var(--text-primary)", marginBottom: 20, fontFamily: "'Barlow', sans-serif" }}>
+            Investing made{" "}
+            <span style={{ color: "var(--accent-teal)" }}>Ethical</span>
+          </motion.h1>
+
+          {/* Description */}
+          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+            style={{ fontSize: 16, lineHeight: 1.75, color: "var(--text-muted)", maxWidth: 480, marginBottom: 36 }}>
+            TwinTrade empowers investors to trade confidently with halal-compliant screening, AI insights, and transparent financial tools built for modern ethical investing.
+          </motion.p>
+
+          {/* Buttons */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}
+            style={{ display: "flex", gap: 12, marginBottom: 40 }}>
+            <Link href="/signup">
+              <button className="btn-primary" style={{ padding: "13px 28px", fontSize: 15 }}>
+                Start Investing
+              </button>
+            </Link>
+            <Link href="/about">
+              <button className="btn-ghost" style={{ padding: "13px 28px", fontSize: 15 }}>
+                Learn More
+              </button>
+            </Link>
+          </motion.div>
+
+          {/* Feature chips */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}
+            style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            {features.map(f => {
+              const Icon = f.icon
+              return (
+                <div key={f.label} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 14px", borderRadius: 8, background: "var(--bg-surface)", border: "1px solid var(--border)", fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
+                  <Icon size={13} color="var(--accent-teal)" />
+                  {f.label}
+                </div>
+              )
+            })}
+          </motion.div>
+        </motion.div>
+
+        {/* RIGHT — image slider */}
+        <motion.div initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, delay: 0.3 }}
+          style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+
+          {/* Glow */}
+          <div style={{ position: "absolute", width: 600, height: 600, borderRadius: "50%", background: "var(--accent-teal-bg)", filter: "blur(60px)", zIndex: 0, pointerEvents: "none" }} />
+
+          {/* Browser window */}
+          <div style={{
+            position: "relative", zIndex: 1, width: "100%", maxWidth: 580,
+            borderRadius: 20, background: "var(--bg-surface)", border: "1px solid var(--border)",
+            boxShadow: "var(--shadow-lg)", overflow: "hidden",
+          }}>
+            {/* Top bar */}
+            <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "12px 16px", borderBottom: "1px solid var(--border)", background: "var(--bg-base)" }}>
+              {["#f87171", "#fbbf24", "#4ade80"].map((c, i) => (
+                <div key={i} style={{ width: 11, height: 11, borderRadius: "50%", background: c }} />
+              ))}
+              <div style={{ flex: 1, height: 22, borderRadius: 5, background: "var(--border)", marginLeft: 8 }} />
+            </div>
+
+            {/* Image */}
+            <div style={{ position: "relative", width: "100%", height: 380, overflow: "hidden", background: "var(--bg-surface)" }}>
+              <AnimatePresence mode="wait">
+                <motion.img
+                  key={currentImage}
+                  initial={{ opacity: 0, scale: 1.02 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.99 }}
+                  transition={{ duration: 1.1, ease: "easeInOut" }}
+                  src={images[currentImage]}
+                  alt="TwinTrade Dashboard"
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain", objectPosition: "center", padding: 12 }}
+                />
+              </AnimatePresence>
+            </div>
+
+            {/* Dot indicators */}
+            <div style={{ position: "absolute", bottom: 14, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 8, zIndex: 10 }}>
+              {images.map((_, i) => (
+                <button key={i} onClick={() => setCurrentImage(i)} style={{
+                  height: 8, borderRadius: 4, border: "none", cursor: "pointer", transition: "all 0.3s",
+                  width: currentImage === i ? 24 : 8,
+                  background: currentImage === i ? "var(--accent-teal)" : "var(--border)",
+                }} />
+              ))}
+            </div>
+          </div>
+        </motion.div>
       </div>
-
-
-      {/* IMAGE */}
-
-      <div
-       className="
-        relative
-        w-full
-        h-[420px]
-        lg:h-[480px]
-        overflow-hidden
-        bg-white
-       "
-      >
-
-       <AnimatePresence
-        mode="wait"
-       >
-
-        <motion.img
-
-         key={currentImage}
-
-         initial={{
-          opacity: 0,
-          scale: 1.02,
-         }}
-
-         animate={{
-          opacity: 1,
-          scale: 1,
-         }}
-
-         exit={{
-          opacity: 0,
-          scale: 0.99,
-         }}
-
-         transition={{
-
-          duration: 1.2,
-
-          ease: "easeInOut",
-
-         }}
-
-         src={images[currentImage]}
-
-         alt="TwinTrade Dashboard"
-
-         className="
-          absolute
-          inset-0
-
-          w-full
-          h-full
-
-          object-contain
-          object-center
-
-          p-4
-          bg-white
-         "
-        />
-
-       </AnimatePresence>
-
-      </div>
-
-
-      {/* DOTS */}
-
-      <div
-       className="
-        absolute
-        bottom-5
-        left-1/2
-        -translate-x-1/2
-
-        flex
-        gap-3
-       "
-      >
-
-       {
-        images.map((_, index) => (
-
-         <button
-
-          key={index}
-
-          onClick={() =>
-           setCurrentImage(index)
-          }
-
-          className={`
-           h-3
-           rounded-full
-           transition-all
-           duration-300
-
-           ${
-            currentImage === index
-
-             ? "bg-blue-600 w-8"
-
-             : "bg-white/70 w-3"
-           }
-          `}
-         />
-
-        ))
-       }
-
-      </div>
-
-     </div>
-
-    </motion.div>
-
-   </div>
-
-  </section>
-
- )
-
+    </section>
+  )
 }

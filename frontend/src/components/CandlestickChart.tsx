@@ -1,960 +1,249 @@
 "use client";
 
-import {
- useEffect,
- useRef,
- useState,
-} from "react";
-
-import {
- createChart,
- ColorType,
- CrosshairMode,
- CandlestickSeries,
- HistogramSeries,
- LineSeries,
-} from "lightweight-charts";
-
-
-type Candle = {
-
- time: number;
-
- open: number;
-
- high: number;
-
- low: number;
-
- close: number;
-
- volume?: number;
-
-};
-
-
-type Props = {
-
- data: Candle[];
-
-};
-
-
-export default function CandlestickChart({
- data,
-}: Props) {
-
- const chartContainerRef =
-  useRef<HTMLDivElement | null>(
-   null
-  );
-
-
- /*
- =====================================
- HOVER OHLC
- =====================================
- */
-
- const [
-
-  hoverData,
-  setHoverData,
-
- ] = useState<{
-
-  open: number;
-
-  high: number;
-
-  low: number;
-
-  close: number;
-
- } | null>(null);
-
-
- /*
- =====================================
- INDICATOR STATES
- =====================================
- */
-
- const [
-  showSMA,
-  setShowSMA,
- ] = useState(true);
-
- const [
-  showRSI,
-  setShowRSI,
- ] = useState(false);
-
- const [
-  showMACD,
-  setShowMACD,
- ] = useState(false);
-
-
- useEffect(() => {
-
-  if (
-   !chartContainerRef.current
-  ) return;
-
-
-  /*
-  =====================================
-  CREATE CHART
-  =====================================
-  */
-
-  const chart =
-   createChart(
-
-    chartContainerRef.current,
-
-    {
-
-     width:
-      chartContainerRef
-       .current.clientWidth,
-
-     height: 520,
-
-     layout: {
-
-      background: {
-
-       type:
-        ColorType.Solid,
-
-       color:
-        "#ffffff",
-
-      },
-
-      textColor:
-       "#111827",
-
-     },
-
-     grid: {
-
-      vertLines: {
-
-       color:
-        "#F1F5F9",
-
-      },
-
-      horzLines: {
-
-       color:
-        "#F1F5F9",
-
-      },
-
-     },
-
-     crosshair: {
-
-      mode:
-       CrosshairMode.Normal,
-
-     },
-
-     rightPriceScale: {
-
-      borderColor:
-       "#E5E7EB",
-
-     },
-
-     timeScale: {
-
-      borderColor:
-       "#E5E7EB",
-
-      timeVisible: true,
-
-      secondsVisible: false,
-
-     },
-
-    }
-
-   );
-
-
-  /*
-  =====================================
-  CANDLE SERIES
-  =====================================
-  */
-
-  const candlestickSeries =
-   chart.addSeries(
-
-    CandlestickSeries,
-
-    {
-
-     upColor:
-      "#10B981",
-
-     downColor:
-      "#EF4444",
-
-     borderVisible:
-      false,
-
-     wickUpColor:
-      "#10B981",
-
-     wickDownColor:
-      "#EF4444",
-
-    }
-
-   );
-
-
-  /*
-  =====================================
-  VOLUME SERIES
-  =====================================
-  */
-
-  const volumeSeries =
-   chart.addSeries(
-
-    HistogramSeries,
-
-    {
-
-     priceFormat: {
-
-      type:
-       "volume",
-
-     },
-
-     priceScaleId:
-      "",
-
-     color:
-      "#94A3B8",
-
-    }
-
-   );
-
-
-  volumeSeries.priceScale()
-   .applyOptions({
-
-    scaleMargins: {
-
-     top: 0.8,
-
-     bottom: 0,
-
-    },
-
-   });
-
-
-  /*
-  =====================================
-  SMA SERIES
-  =====================================
-  */
-
-  const smaSeries =
-   chart.addSeries(
-
-    LineSeries,
-
-    {
-
-     color:
-      "#2563EB",
-
-     lineWidth:
-      2,
-
-    }
-
-   );
-
-
-  /*
-  =====================================
-  SET CANDLE DATA
-  =====================================
-  */
-
-  candlestickSeries.setData(
-   data
-  );
-
-
-  /*
-  =====================================
-  VOLUME DATA
-  =====================================
-  */
-
-  const volumeData =
-
-   data.map((item) => ({
-
-    time:
-     item.time,
-
-    value:
-
-     item.volume ||
-
-     Math.floor(
-      Math.random() * 5000000
-     ),
-
-    color:
-
-     item.close >= item.open
-
-      ? "rgba(16,185,129,0.5)"
-
-      : "rgba(239,68,68,0.5)",
-
-   }));
-
-
-  volumeSeries.setData(
-   volumeData
-  );
-
-
-  /*
-  =====================================
-  SMA CALCULATION
-  =====================================
-  */
-
-  const smaData = [];
-
-  const period = 20;
-
-
-  for (
-   let i = 0;
-   i < data.length;
-   i++
-  ) {
-
-   if (
-    i < period
-   ) continue;
-
-
-   const slice =
-
-    data.slice(
-     i - period,
-     i
-    );
-
-
-   const average =
-
-    slice.reduce(
-
-     (
-      sum,
-      candle
-     ) =>
-
-      sum +
-      candle.close,
-
-     0
-
-    ) / period;
-
-
-   smaData.push({
-
-    time:
-     data[i].time,
-
-    value:
-     Number(
-      average.toFixed(2)
-     ),
-
-   });
-
+import { useEffect, useRef, useState } from "react";
+import { createChart, ColorType, CrosshairMode, CandlestickSeries, HistogramSeries, LineSeries } from "lightweight-charts";
+
+type Candle = { time: number; open: number; high: number; low: number; close: number; volume?: number }
+type Props = { data: Candle[] }
+
+// ── EMA helper ────────────────────────────────────────────────
+function calcEMA(values: number[], period: number): number[] {
+  if (values.length < period) return []
+  const k = 2 / (period + 1)
+  const ema: number[] = []
+  const seed = values.slice(0, period).reduce((a, b) => a + b, 0) / period
+  ema.push(seed)
+  for (let i = period; i < values.length; i++) {
+    const prev = ema[ema.length - 1]
+    ema.push(values[i] * k + prev * (1 - k))
   }
+  return ema
+}
 
+// ── MACD calculation ─────────────────────────────────────────
+function calcMACD(closes: number[]) {
+  const ema12 = calcEMA(closes, 12)
+  const ema26 = calcEMA(closes, 26)
+  if (!ema12.length || !ema26.length) return { macdLine: [] as number[], signalLine: [] as number[], histogram: [] as number[] }
 
-  /*
-  =====================================
-  TOGGLE SMA
-  =====================================
-  */
+  const offset = ema12.length - ema26.length
+  const alignedEma12 = ema12.slice(offset)
 
-  if (showSMA) {
+  const macdLine = alignedEma12.map((v, i) => v - ema26[i])
+  const signalLine = calcEMA(macdLine, 9)
 
-   smaSeries.setData(
-    smaData
-   );
+  const sigOffset = macdLine.length - signalLine.length
+  const alignedMacd = macdLine.slice(sigOffset)
+  const histogram = alignedMacd.map((v, i) => v - signalLine[i])
 
-  } else {
+  return { macdLine: alignedMacd, signalLine, histogram }
+}
 
-   smaSeries.setData([]);
-
+// ── SMA calculation ──────────────────────────────────────────
+// Pulled out as a pure function so it always runs against the
+// exact same `data` array passed to the candlestick series in
+// the same effect pass — avoids any chance of computing SMA
+// against a stale/shorter array than what's actually rendered.
+function calcSMASeries(data: Candle[], period: number) {
+  const smaData: { time: number; value: number }[] = []
+  for (let i = period - 1; i < data.length; i++) {
+    const slice = data.slice(i - period + 1, i + 1) // inclusive window of `period` candles ending at i
+    const avg = slice.reduce((s, c) => s + c.close, 0) / period
+    smaData.push({ time: data[i].time, value: +avg.toFixed(2) })
   }
+  return smaData
+}
 
+export default function CandlestickChart({ data }: Props) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const [hover, setHover] = useState<{ open:number; high:number; low:number; close:number } | null>(null)
+  const [showSMA, setShowSMA] = useState(true)
+  const [showRSI, setShowRSI] = useState(false)
+  const [showMACD, setShowMACD] = useState(false)
 
-  /*
-  =====================================
-  CROSSHAIR HOVER
-  =====================================
-  */
+  const isDark = () => typeof window !== "undefined" && document.documentElement.classList.contains("dark")
 
-  chart.subscribeCrosshairMove(
+  useEffect(() => {
+    if (!ref.current) return
+    if (!data || data.length === 0) return // guard against an empty/loading array briefly mounting the chart
 
-   (param) => {
+    const dark = isDark()
+    const chart = createChart(ref.current, {
+      width: ref.current.clientWidth, height: 460,
+      layout: {
+        background: { type: ColorType.Solid, color: dark ? "#111827" : "#ffffff" },
+        textColor: dark ? "#6b7280" : "#6b7280",
+      },
+      grid: {
+        vertLines: { color: dark ? "#1a2332" : "#f0f2f5" },
+        horzLines: { color: dark ? "#1a2332" : "#f0f2f5" },
+      },
+      crosshair: { mode: CrosshairMode.Normal },
+      rightPriceScale: { borderColor: dark ? "#1e2d3d" : "#e2e6ea" },
+      timeScale: { borderColor: dark ? "#1e2d3d" : "#e2e6ea", timeVisible: true, secondsVisible: false },
+    })
 
-    if (
-     !param.time ||
-     !param.seriesData
-    ) {
+    const candles = chart.addSeries(CandlestickSeries, { upColor:"#16a34a", downColor:"#dc2626", borderVisible:false, wickUpColor:"#16a34a", wickDownColor:"#dc2626" })
+    const volumes = chart.addSeries(HistogramSeries, { priceFormat:{type:"volume"}, priceScaleId:"", color:"#94a3b8" })
+    volumes.priceScale().applyOptions({ scaleMargins:{top:0.8, bottom:0} })
+    const sma = chart.addSeries(LineSeries, { color:"#6366f1", lineWidth:2 })
 
-     return;
+    // Set candle + volume data first, from the SAME `data` reference
+    candles.setData(data)
+    volumes.setData(data.map(d => ({
+      time: d.time,
+      value: d.volume ?? 0,
+      color: d.close >= d.open ? "rgba(22,163,74,0.4)" : "rgba(220,38,38,0.4)",
+    })))
 
+    // SMA computed from the exact same `data` array, in the same pass —
+    // guarantees the line always extends to the same final timestamp
+    // as the candlesticks, no matter how `data` arrived.
+    if (showSMA) {
+      const smaData = calcSMASeries(data, 20)
+      sma.setData(smaData)
+    } else {
+      sma.setData([])
     }
 
-    const candle =
-     param.seriesData.get(
-      candlestickSeries
-     );
+    chart.subscribeCrosshairMove(p => {
+      if (!p.time || !p.seriesData) return
+      const c = p.seriesData.get(candles)
+      if (c && typeof c === "object") setHover({ open:c.open, high:c.high, low:c.low, close:c.close })
+    })
 
-    if (
-     candle &&
-     typeof candle ===
-      "object"
-    ) {
+    // fitContent AFTER all series have their data set, so the visible
+    // range accounts for every series, not just whichever was set first
+    chart.timeScale().fitContent()
 
-     setHoverData({
+    const resize = () => { if (ref.current) chart.applyOptions({ width: ref.current.clientWidth }) }
+    window.addEventListener("resize", resize)
+    return () => { window.removeEventListener("resize", resize); chart.remove() }
+  }, [data, showSMA])
 
-      open:
-       candle.open,
+  const latestRSI = data.length > 14 ? (() => {
+    let g=0, l=0
+    for (let i=data.length-14; i<data.length; i++) { const d=data[i].close-data[i-1].close; d>=0?g+=d:l+=Math.abs(d) }
+    const rs = l===0?100:g/14/(l/14)
+    return +(100-100/(1+rs)).toFixed(2)
+  })() : 0
 
-      high:
-       candle.high,
+  const closes = data.map(d => d.close)
+  const { macdLine, signalLine, histogram } = calcMACD(closes)
 
-      low:
-       candle.low,
+  const latestMacd = macdLine.length ? macdLine[macdLine.length - 1] : null
+  const latestSignal = signalLine.length ? signalLine[signalLine.length - 1] : null
+  const latestHistogram = histogram.length ? histogram[histogram.length - 1] : null
 
-      close:
-       candle.close,
+  const macdAvailable = closes.length >= 35 && latestMacd !== null && latestSignal !== null
 
-     });
+  const macdBullish = macdAvailable && (latestMacd as number) > (latestSignal as number)
+  const macdSignalLabel = !macdAvailable
+    ? "Not enough data"
+    : macdBullish ? "Bullish ↑" : "Bearish ↓"
+  const macdSignalColor = !macdAvailable
+    ? "var(--text-muted)"
+    : macdBullish ? "var(--up)" : "var(--down)"
 
-    }
+  const indicators = [
+    { label:"SMA 20", active:showSMA, toggle:()=>setShowSMA(!showSMA) },
+    { label:"RSI",    active:showRSI,  toggle:()=>setShowRSI(!showRSI) },
+    { label:"MACD",   active:showMACD, toggle:()=>setShowMACD(!showMACD) },
+  ]
 
-   }
+  const ohlc = hover ? [
+    { label:"O", val:hover.open,  color:"var(--text-secondary)" },
+    { label:"H", val:hover.high,  color:"var(--up)" },
+    { label:"L", val:hover.low,   color:"var(--down)" },
+    { label:"C", val:hover.close, color:"var(--accent-teal)" },
+  ] : []
 
-  );
+  // Show a small note if the chart has data but not enough for a full SMA20 window
+  const smaInsufficient = showSMA && data.length > 0 && data.length < 20
 
-
-  /*
-  =====================================
-  FIT CONTENT
-  =====================================
-  */
-
-  chart.timeScale()
-   .fitContent();
-
-
-  /*
-  =====================================
-  RESIZE
-  =====================================
-  */
-
-  const handleResize =
-   () => {
-
-    if (
-     !chartContainerRef.current
-    ) return;
-
-    chart.applyOptions({
-
-     width:
-      chartContainerRef
-       .current.clientWidth,
-
-    });
-
-   };
-
-
-  window.addEventListener(
-   "resize",
-   handleResize
-  );
-
-
-  /*
-  =====================================
-  CLEANUP
-  =====================================
-  */
-
-  return () => {
-
-   window.removeEventListener(
-
-    "resize",
-    handleResize
-
-   );
-
-   chart.remove();
-
-  };
-
- }, [
-  data,
-  showSMA,
- ]);
-
-
- /*
- =====================================
- RSI VALUE
- =====================================
- */
-
- const latestRSI =
-
-  data.length > 14
-
-   ? (() => {
-
-      let gains = 0;
-      let losses = 0;
-
-      for (
-       let i =
-        data.length - 14;
-       i < data.length;
-       i++
-      ) {
-
-       const diff =
-
-        data[i].close -
-        data[i - 1].close;
-
-       if (diff >= 0) {
-
-        gains += diff;
-
-       } else {
-
-        losses +=
-         Math.abs(diff);
-
-       }
-
-      }
-
-      const avgGain =
-       gains / 14;
-
-      const avgLoss =
-       losses / 14;
-
-      const rs =
-       avgLoss === 0
-        ? 100
-        : avgGain / avgLoss;
-
-      return Number(
-
-       (
-        100 -
-        100 / (1 + rs)
-       ).toFixed(2)
-
-      );
-
-     })()
-
-   : 0;
-
-
- return (
-
-  <div
-   className="
-    w-full
-   "
-  >
-
-   {/* OHLC */}
-
-   <div
-    className="
-     flex
-     flex-wrap
-     items-center
-     gap-4
-     mb-4
-    "
-   >
-
-    {hoverData && (
-
-     <>
-
-      <div
-       className="
-        px-4
-        py-2
-        rounded-xl
-        bg-gray-100
-        text-sm
-        font-medium
-       "
-      >
-       O:
-       {" "}
-       {hoverData.open}
+  return (
+    <div>
+      {/* OHLC row */}
+      <div style={{ display:"flex", gap:8, marginBottom:12, minHeight:32 }}>
+        {ohlc.length > 0 ? ohlc.map(o => (
+          <div key={o.label} style={{ padding:"4px 10px", borderRadius:6, background:"var(--bg-hover)", border:"1px solid var(--border)", fontSize:12, fontFamily:"'JetBrains Mono', monospace", color:o.color, fontWeight:600 }}>
+            {o.label}: <span style={{ color:"var(--text-primary)" }}>{o.val}</span>
+          </div>
+        )) : <span style={{ fontSize:12, color:"var(--text-muted)" }}>Hover chart for OHLC data</span>}
       </div>
 
-      <div
-       className="
-        px-4
-        py-2
-        rounded-xl
-        bg-green-100
-        text-sm
-        font-medium
-       "
-      >
-       H:
-       {" "}
-       {hoverData.high}
+      {/* Chart */}
+      <div ref={ref} style={{ width:"100%", border:"1px solid var(--border)", borderRadius:10, overflow:"hidden" }} />
+
+      {smaInsufficient && (
+        <p style={{ fontSize:11, color:"var(--text-muted)", marginTop:6 }}>
+          SMA 20 needs at least 20 candles — switch to a longer timeframe to see the full line.
+        </p>
+      )}
+
+      {/* Toggles */}
+      <div style={{ display:"flex", gap:8, marginTop:14 }}>
+        {indicators.map(ind => (
+          <button key={ind.label} onClick={ind.toggle} style={{
+            padding:"7px 14px", borderRadius:7, fontSize:12, fontWeight:600, cursor:"pointer", transition:"all 0.15s",
+            background: ind.active ? "var(--accent-teal)" : "var(--bg-hover)",
+            color: ind.active ? "#fff" : "var(--text-secondary)",
+            border: "1.5px solid " + (ind.active ? "var(--accent-teal)" : "var(--border)"),
+          }}>{ind.label}</button>
+        ))}
       </div>
 
-      <div
-       className="
-        px-4
-        py-2
-        rounded-xl
-        bg-red-100
-        text-sm
-        font-medium
-       "
-      >
-       L:
-       {" "}
-       {hoverData.low}
-      </div>
-
-      <div
-       className="
-        px-4
-        py-2
-        rounded-xl
-        bg-blue-100
-        text-sm
-        font-medium
-       "
-      >
-       C:
-       {" "}
-       {hoverData.close}
-      </div>
-
-     </>
-
-    )}
-
-   </div>
-
-
-   {/* CHART */}
-
-   <div
-    ref={chartContainerRef}
-
-    className="
-     w-full
-     h-[520px]
-     rounded-3xl
-     overflow-hidden
-     border
-    "
-   />
-
-
-   {/* INDICATORS */}
-
-   <div
-    className="
-     flex
-     flex-wrap
-     gap-3
-     mt-6
-    "
-   >
-
-    <button
-
-     onClick={() =>
-      setShowSMA(
-       !showSMA
-      )
-     }
-
-     className={`
-      px-5
-      py-3
-      rounded-2xl
-      border
-      font-medium
-      transition
-
-      ${
-       showSMA
-
-        ? "bg-black text-white"
-
-        : "bg-white text-black"
-      }
-     `}
-    >
-
-     SMA 20
-
-    </button>
-
-
-    <button
-
-     onClick={() =>
-      setShowRSI(
-       !showRSI
-      )
-     }
-
-     className={`
-      px-5
-      py-3
-      rounded-2xl
-      border
-      font-medium
-      transition
-
-      ${
-       showRSI
-
-        ? "bg-black text-white"
-
-        : "bg-white text-black"
-      }
-     `}
-    >
-
-     RSI
-
-    </button>
-
-
-    <button
-
-     onClick={() =>
-      setShowMACD(
-       !showMACD
-      )
-     }
-
-     className={`
-      px-5
-      py-3
-      rounded-2xl
-      border
-      font-medium
-      transition
-
-      ${
-       showMACD
-
-        ? "bg-black text-white"
-
-        : "bg-white text-black"
-      }
-     `}
-    >
-
-     MACD
-
-    </button>
-
-   </div>
-
-
-   {/* RSI */}
-
-   {
-    showRSI && (
-
-     <div
-      className="
-       bg-white
-       border
-       rounded-3xl
-       p-6
-       mt-6
-      "
-     >
-
-      <h3
-       className="
-        text-xl
-        font-bold
-        mb-4
-       "
-      >
-
-       RSI Indicator
-
-      </h3>
-
-      <div
-       className="
-        flex
-        items-center
-        justify-between
-       "
-      >
-
-       <span
-        className="
-         text-gray-500
-        "
-       >
-
-        Current RSI
-
-       </span>
-
-       <span
-        className={`
-         text-2xl
-         font-bold
-
-         ${
-          latestRSI > 70
-
-           ? "text-red-500"
-
-           : latestRSI < 30
-
-           ? "text-emerald-500"
-
-           : "text-yellow-500"
-         }
-        `}
-       >
-
-        {latestRSI}
-
-       </span>
-
-      </div>
-
-     </div>
-
-    )
-   }
-
-
-   {/* MACD */}
-
-   {
-    showMACD && (
-
-     <div
-      className="
-       bg-white
-       border
-       rounded-3xl
-       p-6
-       mt-6
-      "
-     >
-
-      <h3
-       className="
-        text-xl
-        font-bold
-        mb-4
-       "
-      >
-
-       MACD Signal
-
-      </h3>
-
-      <div
-       className="
-        flex
-        items-center
-        justify-between
-       "
-      >
-
-       <span
-        className="
-         text-gray-500
-        "
-       >
-
-        Momentum
-
-       </span>
-
-       <span
-        className="
-         text-2xl
-         font-bold
-         text-emerald-500
-        "
-       >
-
-        Bullish
-
-       </span>
-
-      </div>
-
-     </div>
-
-    )
-   }
-
-  </div>
-
- );
-
+      {showRSI && (
+        <div style={{ marginTop:14, padding:16, background:"var(--bg-surface)", border:"1px solid var(--border)", borderRadius:10, borderLeft:"3px solid var(--warn)" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+            <span style={{ fontSize:13, fontWeight:700, color:"var(--text-primary)" }}>RSI (14)</span>
+            <span style={{ fontSize:18, fontWeight:800, color: latestRSI>70?"var(--down)":latestRSI<30?"var(--up)":"var(--warn)", fontFamily:"'JetBrains Mono', monospace" }}>{latestRSI}</span>
+          </div>
+          <div style={{ height:6, background:"var(--bg-base)", borderRadius:3, overflow:"hidden" }}>
+            <div style={{ height:"100%", width:`${latestRSI}%`, background: latestRSI>70?"var(--down)":latestRSI<30?"var(--up)":"var(--warn)", borderRadius:3, transition:"width 0.5s" }} />
+          </div>
+          <div style={{ display:"flex", justifyContent:"space-between", marginTop:6, fontSize:11, color:"var(--text-muted)" }}>
+            <span>Oversold (&lt;30)</span><span>Overbought (&gt;70)</span>
+          </div>
+        </div>
+      )}
+
+      {showMACD && (
+        <div style={{ marginTop:14, padding:16, background:"var(--bg-surface)", border:"1px solid var(--border)", borderRadius:10, borderLeft:"3px solid var(--indigo)" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: macdAvailable ? 12 : 0 }}>
+            <div>
+              <p style={{ fontSize:13, fontWeight:700, color:"var(--text-primary)" }}>MACD (12, 26, 9)</p>
+              <p style={{ fontSize:12, color:"var(--text-muted)", marginTop:3 }}>Trend-following momentum indicator</p>
+            </div>
+            <span style={{ fontSize:15, fontWeight:800, color: macdSignalColor }}>{macdSignalLabel}</span>
+          </div>
+
+          {macdAvailable && (
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:10 }}>
+              <div style={{ background:"var(--bg-base)", border:"1px solid var(--border)", borderRadius:8, padding:"10px 12px" }}>
+                <p style={{ fontSize:10, fontWeight:700, color:"var(--text-muted)", textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:5 }}>MACD Line</p>
+                <p style={{ fontSize:14, fontWeight:700, color:"var(--text-primary)", fontFamily:"'JetBrains Mono', monospace" }}>{(latestMacd as number).toFixed(2)}</p>
+              </div>
+              <div style={{ background:"var(--bg-base)", border:"1px solid var(--border)", borderRadius:8, padding:"10px 12px" }}>
+                <p style={{ fontSize:10, fontWeight:700, color:"var(--text-muted)", textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:5 }}>Signal Line</p>
+                <p style={{ fontSize:14, fontWeight:700, color:"var(--text-primary)", fontFamily:"'JetBrains Mono', monospace" }}>{(latestSignal as number).toFixed(2)}</p>
+              </div>
+              <div style={{ background:"var(--bg-base)", border:"1px solid var(--border)", borderRadius:8, padding:"10px 12px" }}>
+                <p style={{ fontSize:10, fontWeight:700, color:"var(--text-muted)", textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:5 }}>Histogram</p>
+                <p style={{ fontSize:14, fontWeight:700, color: (latestHistogram as number) >= 0 ? "var(--up)" : "var(--down)", fontFamily:"'JetBrains Mono', monospace" }}>
+                  {(latestHistogram as number) >= 0 ? "+" : ""}{(latestHistogram as number).toFixed(2)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!macdAvailable && (
+            <p style={{ fontSize:12, color:"var(--text-muted)", marginTop:8 }}>
+              MACD needs at least 35 days of price history. Try a longer timeframe (1Y) for this stock.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }

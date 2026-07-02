@@ -1,914 +1,180 @@
+// src/app/dashboard/page.tsx
 "use client"
 
-import {
- useEffect,
- useState,
-} from "react"
-
+import { useEffect, useState } from "react"
 import Link from "next/link"
-
-import DashboardLayout
- from "@/layouts/DashboardLayout"
-
-import ProtectedRoute
- from "@/components/ProtectedRoutes"
-
-import DashboardChart
- from "@/components/DashboardChart"
-
-import TopMovers
- from "@/components/TopMovers"
-
-import AddMoneyModal
- from "@/components/AddMoneyModal"
-
-import {
-
- ArrowUpRight,
- TrendingUp,
- Wallet,
- Brain,
- Star,
- ShieldCheck,
- Activity,
-
-} from "lucide-react"
-
-import {
- usePortfolio,
-} from "@/context/PortfolioContext"
-
-import api
- from "@/services/api"
-
+import DashboardLayout from "@/layouts/DashboardLayout"
+import ProtectedRoute from "@/components/ProtectedRoutes"
+import DashboardChart from "@/components/DashboardChart"
+import TopMovers from "@/components/TopMovers"
+import AddMoneyModal from "@/components/AddMoneyModal"
+import { ArrowUpRight, ArrowDownRight, TrendingUp, Wallet, Brain, Star, ShieldCheck, Activity, Plus } from "lucide-react"
+import { usePortfolio } from "@/context/PortfolioContext"
+import api from "@/services/api"
 
 export default function DashboardPage() {
+  const [showAddMoney, setShowAddMoney] = useState(false)
+  const { portfolio, orders, loading } = usePortfolio()
+  const [aiInsights, setAiInsights] = useState({ sentiment: "Neutral", confidence: 50, health: "Moderate", recommendation: "Loading AI insights..." })
 
- const [showAddMoney,
-  setShowAddMoney] =
-  useState(false)
+  useEffect(() => { api.get("/ai/insights").then(r => setAiInsights(r.data)).catch(console.log) }, [])
 
+  const stats = [
+    { title: "Portfolio Value", value: `₹${portfolio?.currentPortfolioValue?.toLocaleString() || 0}`, change: `${portfolio?.totalReturnPercentage || 0}%`, positive: (portfolio?.totalReturnPercentage || 0) >= 0, icon: Wallet, accent: "var(--accent-teal)" },
+    { title: "Total Profit", value: `₹${portfolio?.totalProfit?.toLocaleString() || 0}`, change: portfolio?.totalProfit >= 0 ? "Profitable" : "Loss", positive: portfolio?.totalProfit >= 0, icon: TrendingUp, accent: "var(--up)" },
+    { title: "Total Holdings", value: `${portfolio?.holdings?.length || 0}`, change: aiInsights.health, positive: true, icon: Star, accent: "var(--warn)" },
+    { title: "AI Confidence", value: `${aiInsights.confidence}%`, change: aiInsights.sentiment, positive: true, icon: Brain, accent: "var(--indigo)" },
+  ]
 
- const {
-
-  portfolio,
-  orders,
-  loading,
-
- } = usePortfolio()
-
-
- /*
- ====================================
- REAL AI INSIGHTS
- ====================================
- */
-
- const [aiInsights,
-  setAiInsights] =
-
-  useState({
-
-   sentiment:
-    "Neutral",
-
-   confidence: 50,
-
-   health:
-    "Moderate",
-
-   recommendation:
-    "Loading AI insights...",
-
-  })
-
-
- /*
- ====================================
- FETCH AI INSIGHTS
- ====================================
- */
-
- const fetchAIInsights =
-  async () => {
-
-   try {
-
-    const response =
-     await api.get(
-      "/ai/insights"
-     )
-
-    setAiInsights(
-     response.data
-    )
-
-   } catch (error) {
-
-    console.log(error)
-
-   }
-
-  }
-
-
- /*
- ====================================
- LOAD AI
- ====================================
- */
-
- useEffect(() => {
-
-  fetchAIInsights()
-
- }, [])
-
-
- /*
- ====================================
- DASHBOARD STATS
- ====================================
- */
-
- const stats = [
-
-  {
-   title:
-    "Portfolio Value",
-
-   value:
-    `₹ ${
-     portfolio?.currentPortfolioValue
-      ?.toLocaleString()
-      || 0
-    }`,
-
-   change:
-    `${portfolio?.totalReturnPercentage || 0}%`,
-
-   icon: Wallet,
-  },
-
-  {
-   title:
-    "Total Profit",
-
-   value:
-    `₹ ${
-     portfolio?.totalProfit
-      ?.toLocaleString()
-      || 0
-    }`,
-
-   change:
-    portfolio?.totalProfit >= 0
-     ? "Profitable"
-     : "Loss",
-
-   icon:
-    TrendingUp,
-  },
-
-  {
-   title:
-    "Total Holdings",
-
-   value:
-    `${
-     portfolio?.holdings
-      ?.length || 0
-    }`,
-
-   change:
-    aiInsights.health,
-
-   icon: Star,
-  },
-
-  {
-   title:
-    "AI Confidence",
-
-   value:
-    `${aiInsights.confidence}%`,
-
-   change:
-    aiInsights.sentiment,
-
-   icon: Brain,
-  },
-
- ]
-
-
- /*
- ====================================
- LOADING
- ====================================
- */
-
- if (loading) {
-
-  return (
-
-   <ProtectedRoute>
-
-    <DashboardLayout>
-
-     <div
-      className="
-       flex
-       items-center
-       justify-center
-       h-[70vh]
-      "
-     >
-
-      <p
-       className="
-        text-lg
-        text-gray-500
-       "
-      >
-
-       Loading Dashboard...
-
-      </p>
-
-     </div>
-
-    </DashboardLayout>
-
-   </ProtectedRoute>
-
+  if (loading) return (
+    <ProtectedRoute>
+      <DashboardLayout>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "60vh", gap: 16 }}>
+          <div className="spin" style={{ width: 28, height: 28, borderRadius: "50%", border: "3px solid var(--border)", borderTopColor: "var(--accent-teal)" }} />
+          <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading dashboard...</p>
+        </div>
+      </DashboardLayout>
+    </ProtectedRoute>
   )
 
- }
+  return (
+    <ProtectedRoute>
+      <DashboardLayout>
+        <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
 
-
- return (
-
-  <ProtectedRoute>
-
-   <DashboardLayout>
-
-    <div className="space-y-10">
-
-     {/* HEADER */}
-
-     <div>
-
-      <h1
-       className="
-        text-4xl
-        font-bold
-        text-gray-900
-       "
-      >
-
-       Welcome Back 👋
-
-      </h1>
-
-
-      <p
-       className="
-        text-gray-500
-        mt-3
-        text-lg
-       "
-      >
-
-       AI-powered halal investing
-       intelligence dashboard.
-
-      </p>
-
-
-      {/* ACTIONS */}
-
-      <div
-       className="
-        flex
-        gap-4
-        mt-6
-       "
-      >
-
-       <button
-
-        onClick={() =>
-         setShowAddMoney(true)
-        }
-
-        className="
-         bg-emerald-500
-         hover:bg-emerald-600
-         text-white
-         px-6
-         py-3
-         rounded-2xl
-         font-semibold
-         transition
-        "
-
-       >
-
-        + Add Money
-
-       </button>
-
-
-       <Link
-        href="/ai-advisor"
-       >
-
-        <button
-         className="
-          bg-black
-          hover:bg-gray-900
-          text-white
-          px-6
-          py-3
-          rounded-2xl
-          font-semibold
-          transition
-         "
-        >
-
-         Open AI Advisor
-
-        </button>
-
-       </Link>
-
-      </div>
-
-     </div>
-
-
-     {/* STATS */}
-
-     <div
-      className="
-       grid
-       grid-cols-1
-       md:grid-cols-2
-       xl:grid-cols-4
-       gap-6
-      "
-     >
-
-      {
-       stats.map((item) => {
-
-        const Icon =
-         item.icon
-
-        return (
-
-         <div
-
-          key={item.title}
-
-          className="
-           bg-white
-           rounded-3xl
-           border
-           p-7
-           shadow-sm
-           hover:shadow-lg
-           transition
-          "
-         >
-
-          <div
-           className="
-            flex items-center
-            justify-between
-           "
-          >
-
-           <div>
-
-            <p
-             className="
-              text-gray-500
-              text-sm
-             "
-            >
-
-             {item.title}
-
-            </p>
-
-
-            <h2
-             className="
-              text-3xl
-              font-bold
-              mt-3
-              text-gray-900
-             "
-            >
-
-             {item.value}
-
-            </h2>
-
-           </div>
-
-
-           <div
-            className="
-             w-14 h-14
-             rounded-2xl
-             bg-blue-100
-             flex items-center
-             justify-center
-             text-blue-600
-            "
-           >
-
-            <Icon size={28} />
-
-           </div>
-
+          {/* HEADER */}
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <span className="live-dot" style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--up)", display: "inline-block" }} />
+                <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>Markets Open</span>
+              </div>
+              <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.4px", fontFamily: "'Barlow', sans-serif" }}>Welcome Back 👋</h1>
+              <p style={{ color: "var(--text-muted)", marginTop: 6, fontSize: 14 }}>AI-powered halal investing intelligence dashboard.</p>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setShowAddMoney(true)} className="btn-primary"><Plus size={14} /> Add Funds</button>
+              <Link href="/ai-advisor"><button className="btn-ghost" style={{ display: "flex", alignItems: "center", gap: 6 }}><Brain size={14} /> AI Advisor</button></Link>
+            </div>
           </div>
 
-
-          <div
-           className={`
-            flex items-center
-            gap-2
-            mt-6
-            font-medium
-
-            ${
-             item.change
-              .toString()
-              .includes("-")
-
-              ? "text-red-500"
-
-              : "text-green-600"
-            }
-           `}
-          >
-
-           <ArrowUpRight size={18} />
-
-           <span>
-
-            {item.change}
-
-           </span>
-
+          {/* STATS */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+            {stats.map(item => {
+              const Icon = item.icon
+              return (
+                <div key={item.title} style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "18px 20px", boxShadow: "var(--shadow-sm)", borderTop: `3px solid ${item.accent}`, transition: "box-shadow 0.2s" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-md)" }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-sm)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-muted)" }}>{item.title}</p>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: `${item.accent}18`, display: "flex", alignItems: "center", justifyContent: "center", color: item.accent }}><Icon size={15} /></div>
+                  </div>
+                  <p style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.4px", fontFamily: "'JetBrains Mono', monospace", marginBottom: 8 }}>{item.value}</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, color: item.positive ? "var(--up)" : "var(--down)" }}>
+                    {item.positive ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}{item.change}
+                  </div>
+                </div>
+              )
+            })}
           </div>
 
-         </div>
-
-        )
-       })
-      }
-
-     </div>
-
-
-     {/* MARKET + AI */}
-
-     <div
-      className="
-       grid
-       grid-cols-1
-       xl:grid-cols-3
-       gap-6
-      "
-     >
-
-      {/* CHART */}
-
-      <div
-       className="
-        xl:col-span-2
-        bg-white
-        rounded-3xl
-        border
-        p-8
-        shadow-sm
-       "
-      >
-
-       <div
-        className="
-         flex items-center
-         justify-between
-         mb-8
-        "
-       >
-
-        <div>
-
-         <h2
-          className="
-           text-2xl
-           font-bold
-           text-gray-900
-          "
-         >
-
-          Market Overview
-
-         </h2>
-
-
-         <p className="text-gray-500 mt-2">
-
-          Live portfolio analytics
-          and performance tracking.
-
-         </p>
-
-        </div>
-
-       </div>
-
-
-       <DashboardChart />
-
-      </div>
-
-
-      {/* AI INSIGHTS */}
-
-      <div
-       className="
-        bg-white
-        rounded-3xl
-        border
-        p-8
-        shadow-sm
-       "
-      >
-
-       <div
-        className="
-         flex
-         items-center
-         justify-between
-         mb-6
-        "
-       >
-
-        <h2
-         className="
-          text-2xl
-          font-bold
-          text-gray-900
-         "
-        >
-
-         AI Insights
-
-        </h2>
-
-
-        <Brain
-         className="
-          text-blue-600
-         "
-        />
-
-       </div>
-
-
-       <div className="space-y-5">
-
-        <div
-         className="
-          bg-blue-50
-          rounded-2xl
-          p-5
-         "
-        >
-
-         <div className="flex items-center gap-3">
-
-          <Activity
-           className="
-            text-blue-600
-           "
-          />
-
-          <h3
-           className="
-            font-semibold
-            text-blue-700
-           "
-          >
-
-           Market Sentiment
-
-          </h3>
-
-         </div>
-
-         <p
-          className="
-           text-sm
-           text-gray-600
-           mt-3
-           leading-7
-          "
-         >
-
-          Current AI sentiment:
-          {" "}
-
-          <span className="font-semibold">
-
-           {aiInsights.sentiment}
-
-          </span>
-
-         </p>
-
-        </div>
-
-
-        <div
-         className="
-          bg-green-50
-          rounded-2xl
-          p-5
-         "
-        >
-
-         <div className="flex items-center gap-3">
-
-          <ShieldCheck
-           className="
-            text-green-600
-           "
-          />
-
-          <h3
-           className="
-            font-semibold
-            text-green-700
-           "
-          >
-
-           Portfolio Health
-
-          </h3>
-
-         </div>
-
-         <p
-          className="
-           text-sm
-           text-gray-600
-           mt-3
-           leading-7
-          "
-         >
-
-          Diversification level:
-          {" "}
-
-          <span className="font-semibold">
-
-           {aiInsights.health}
-
-          </span>
-
-         </p>
-
-        </div>
-
-
-        <div
-         className="
-          bg-orange-50
-          rounded-2xl
-          p-5
-         "
-        >
-
-         <div className="flex items-center gap-3">
-
-          <Brain
-           className="
-            text-orange-600
-           "
-          />
-
-          <h3
-           className="
-            font-semibold
-            text-orange-700
-           "
-          >
-
-           AI Recommendation
-
-          </h3>
-
-         </div>
-
-         <p
-          className="
-           text-sm
-           text-gray-600
-           mt-3
-           leading-7
-          "
-         >
-
-          {aiInsights.recommendation}
-
-         </p>
-
-        </div>
-
-       </div>
-
-      </div>
-
-     </div>
-
-
-     {/* TOP MOVERS */}
-
-     <TopMovers />
-
-
-     {/* RECENT ORDERS */}
-
-     <div
-      className="
-       bg-white
-       rounded-3xl
-       border
-       p-8
-       shadow-sm
-      "
-     >
-
-      <h2
-       className="
-        text-2xl
-        font-bold
-        text-gray-900
-        mb-8
-       "
-      >
-
-       Recent Orders
-
-      </h2>
-
-
-      <div className="space-y-6">
-
-       {
-        orders.length === 0
-
-         ? (
-
-          <p
-           className="
-            text-gray-500
-           "
-          >
-
-           No orders yet
-
-          </p>
-
-         )
-
-         : (
-
-          orders
-           .slice(0, 5)
-           .map((order, index) => (
-
-            <div
-
-             key={index}
-
-             className="
-              flex
-              items-center
-              justify-between
-             "
-            >
-
-             <div>
-
-              <h3
-               className="
-                font-semibold
-               "
-              >
-
-               {
-                order.orderType
-               }
-
-               {" "}
-
-               {
-                order.symbol
-               }
-
-              </h3>
-
-
-              <p
-               className="
-                text-gray-500
-                text-sm
-                mt-1
-               "
-              >
-
-               Qty:
-               {" "}
-
-               {
-                order.quantity
-               }
-
-               {" "}
-
-               • ₹
-
-               {
-                order.price
-               }
-
-              </p>
-
-             </div>
-
-
-             <span
-              className={`
-               font-medium
-
-               ${
-                order.orderType
-                 === "BUY"
-
-                  ? "text-emerald-600"
-
-                  : "text-red-500"
-               }
-              `}
-             >
-
-              {
-               order.orderType
-              }
-
-             </span>
-
+          {/* CHART + AI */}
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
+            <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "var(--shadow-sm)", overflow: "hidden" }}>
+              <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Market Overview</h2>
+                  <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>Live portfolio analytics and performance tracking</p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span className="live-dot" style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--up)", display: "inline-block" }} />
+                  <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>LIVE</span>
+                </div>
+              </div>
+              <div style={{ padding: "16px 12px" }}><DashboardChart /></div>
             </div>
 
-           ))
-         )
-       }
+            <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "var(--shadow-sm)", overflow: "hidden" }}>
+              <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>AI Insights</h2>
+                <Brain size={15} color="var(--indigo)" />
+              </div>
+              <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+                {[
+                  { icon: Activity, color: "var(--indigo)", bg: "var(--indigo-bg)", label: "Market Sentiment", sub: "Current signal", val: aiInsights.sentiment },
+                  { icon: ShieldCheck, color: "var(--up)", bg: "var(--up-bg)", label: "Portfolio Health", sub: "Diversification", val: aiInsights.health },
+                ].map(item => {
+                  const Icon = item.icon
+                  return (
+                    <div key={item.label} style={{ padding: "12px 14px", borderRadius: 9, background: item.bg, borderLeft: `3px solid ${item.color}` }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}>
+                        <Icon size={13} color={item.color} />
+                        <span style={{ fontSize: 11, fontWeight: 700, color: item.color, textTransform: "uppercase", letterSpacing: "0.06em" }}>{item.label}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{item.sub}</span>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)", fontFamily: "'JetBrains Mono', monospace" }}>{item.val}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+                <div style={{ padding: "12px 14px", borderRadius: 9, background: "var(--warn-bg)", borderLeft: "3px solid var(--warn)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}>
+                    <Brain size={13} color="var(--warn)" />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--warn)", textTransform: "uppercase", letterSpacing: "0.06em" }}>AI Recommendation</span>
+                  </div>
+                  <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.65 }}>{aiInsights.recommendation}</p>
+                </div>
+                <div style={{ padding: "12px 14px", borderRadius: 9, background: "var(--bg-base)", border: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>AI Confidence</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: "var(--indigo)", fontFamily: "'JetBrains Mono', monospace" }}>{aiInsights.confidence}%</span>
+                  </div>
+                  <div style={{ height: 5, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${aiInsights.confidence}%`, background: "var(--indigo)", borderRadius: 3 }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-      </div>
+          <TopMovers />
 
-     </div>
+          {/* RECENT ORDERS */}
+          <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "var(--shadow-sm)", overflow: "hidden" }}>
+            <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Recent Orders</h2>
+                <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>Last {Math.min(orders.length, 5)} executed transactions</p>
+              </div>
+              <Link href="/orders"><span style={{ fontSize: 12, color: "var(--accent-teal)", fontWeight: 600, cursor: "pointer" }}>View all →</span></Link>
+            </div>
+            <div>
+              {orders.length === 0 ? (
+                <div style={{ padding: "40px 22px", textAlign: "center" }}><p style={{ color: "var(--text-muted)", fontSize: 13 }}>No orders yet.</p></div>
+              ) : (
+                orders.slice(0, 5).map((order, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 22px", borderBottom: i < Math.min(orders.length, 5) - 1 ? "1px solid var(--border)" : "none", transition: "background 0.12s" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)" }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 9px", borderRadius: 5, background: order.orderType === "BUY" ? "var(--up-bg)" : "var(--down-bg)", color: order.orderType === "BUY" ? "var(--up)" : "var(--down)", border: `1px solid ${order.orderType === "BUY" ? "var(--up-border)" : "var(--down-border)"}` }}>{order.orderType}</span>
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", fontFamily: "'JetBrains Mono', monospace" }}>{order.symbol}</p>
+                        <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>Qty: {order.quantity}</p>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)", fontFamily: "'JetBrains Mono', monospace" }}>₹{order.price?.toLocaleString()}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
 
-    </div>
-
-
-    {/* ADD MONEY MODAL */}
-
-    {
-     showAddMoney && (
-
-      <AddMoneyModal
-
-       onClose={() =>
-        setShowAddMoney(false)
-       }
-
-      />
-
-     )
-    }
-
-   </DashboardLayout>
-
-  </ProtectedRoute>
-
- )
+        </div>
+        {showAddMoney && <AddMoneyModal onClose={() => setShowAddMoney(false)} />}
+      </DashboardLayout>
+    </ProtectedRoute>
+  )
 }

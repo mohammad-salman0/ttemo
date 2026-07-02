@@ -1,672 +1,127 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import { TrendingUp, TrendingDown } from "lucide-react";
 
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
-
-import {
-  TrendingUp,
-  TrendingDown,
-} from "lucide-react";
-
-type ChartData = {
-  time: string;
-  price: number;
-};
-
+type ChartData = { time: string; price: number }
 type Props = {
-  symbol?: string;
-  companyName?: string;
-  currentPrice?: number;
-  change?: number;
-  halalStatus?: "Halal" | "Non-Halal" | "Review Needed";
-  data?: ChartData[];
-};
+  symbol?: string; companyName?: string; currentPrice?: number;
+  change?: number; halalStatus?: "Halal" | "Non-Halal" | "Review Needed"; data?: ChartData[];
+}
 
-const timeframeOptions = [
-  "1D",
-  "1W",
-  "1M",
-  "1Y",
-];
+const TF = ["1D","1W","1M","1Y"]
 
-export default function StockChart({
-  symbol = "N/A",
-  companyName = "Unknown Company",
-  currentPrice = 0,
-  change = 0,
-  halalStatus = "Review Needed",
-  data = [],
-}: Props) {
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null
+  return (
+    <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 12px", boxShadow: "var(--shadow-md)" }}>
+      <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 3 }}>{label}</p>
+      <p style={{ fontSize: 14, fontWeight: 700, color: "var(--accent-teal)", fontFamily: "'JetBrains Mono', monospace" }}>₹{payload[0].value.toFixed(2)}</p>
+    </div>
+  )
+}
 
-  const [selectedTimeframe, setSelectedTimeframe] =
-    useState("1W");
+const HALAL_COLOR: Record<string, string> = { "Halal": "var(--up)", "Non-Halal": "var(--down)", "Review Needed": "var(--warn)" }
 
-  const [liveData, setLiveData] =
-    useState<ChartData[]>(data);
+const metrics = [
+  { label: "Market Cap", value: "₹6.2T" },
+  { label: "P/E Ratio",  value: "28.6" },
+  { label: "52W High",   value: "₹1,680" },
+  { label: "Volume",     value: "2.1M" },
+]
 
-  /*
-    Sync incoming data
-  */
+export default function StockChart({ symbol="N/A", companyName="Unknown", currentPrice=0, change=0, halalStatus="Review Needed", data=[] }: Props) {
+  const [tf, setTf] = useState("1W")
+  const [liveData, setLiveData] = useState(data)
+  const isUp = change >= 0
+  const halalColor = HALAL_COLOR[halalStatus]
+
+  useEffect(() => { setLiveData(data) }, [data])
   useEffect(() => {
-    setLiveData(data);
-  }, [data]);
-
-  /*
-    MOCK REALTIME UPDATES
-    Replace later with Socket.IO
-  */
-  useEffect(() => {
-
-    if (!liveData.length) return;
-
-    const interval = setInterval(() => {
-
-      setLiveData((prev) => {
-
-        if (!prev.length) return prev;
-
-        const updated = [...prev];
-
-        const lastPoint =
-          updated[updated.length - 1];
-
-        const randomMovement =
-          (Math.random() - 0.5) * 5;
-
-        const nextPrice =
-          Number(
-            (
-              lastPoint.price +
-              randomMovement
-            ).toFixed(2)
-          );
-
-        updated[updated.length - 1] = {
-          ...lastPoint,
-          price: nextPrice,
-        };
-
-        return updated;
-
-      });
-
-    }, 3000);
-
-    return () =>
-      clearInterval(interval);
-
-  }, [liveData.length]);
-
-  const safePrice =
-    currentPrice ?? 0;
-
-  const safeChange =
-    change ?? 0;
-
-  const isPositive = useMemo(
-    () => safeChange >= 0,
-    [safeChange]
-  );
-
-  const halalStyles = useMemo(() => {
-
-    switch (halalStatus) {
-
-      case "Halal":
-        return {
-          bg: "bg-emerald-50",
-          text: "text-emerald-700",
-        };
-
-      case "Non-Halal":
-        return {
-          bg: "bg-red-50",
-          text: "text-red-600",
-        };
-
-      default:
-        return {
-          bg: "bg-yellow-50",
-          text: "text-yellow-700",
-        };
-
-    }
-
-  }, [halalStatus]);
+    if (!liveData.length) return
+    const iv = setInterval(() => {
+      setLiveData(prev => {
+        const u = [...prev]
+        const last = u[u.length-1]
+        u[u.length-1] = { ...last, price: +(last.price + (Math.random()-.5)*5).toFixed(2) }
+        return u
+      })
+    }, 3000)
+    return () => clearInterval(iv)
+  }, [liveData.length])
 
   return (
-    <div
-      className="
-        bg-white
-        rounded-[28px]
-        border
-        border-gray-100
-        shadow-[0px_4px_30px_rgba(0,0,0,0.04)]
-        p-6
-      "
-    >
-
-      {/* TOP SECTION */}
-
-      <div
-        className="
-          flex
-          flex-col
-          lg:flex-row
-          lg:items-start
-          lg:justify-between
-          gap-6
-          mb-5
-        "
-      >
-
-        {/* LEFT */}
-
+    <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "var(--shadow-sm)", overflow: "hidden" }}>
+      {/* Header */}
+      <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)", display: "flex", flexWrap: "wrap", gap: 20, justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-
-          <div
-            className="
-              flex
-              items-center
-              gap-3
-              flex-wrap
-              mb-2
-            "
-          >
-
-            <h2
-              className="
-                text-3xl
-                font-bold
-                text-black
-                tracking-tight
-              "
-            >
-              {companyName}
-            </h2>
-
-            <span
-              className={`
-                px-4
-                py-1.5
-                rounded-full
-                text-sm
-                font-semibold
-                ${halalStyles.bg}
-                ${halalStyles.text}
-              `}
-            >
-              {halalStatus}
-            </span>
-
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.3px" }}>{companyName}</h2>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 5, background: halalColor + "18", color: halalColor, border: `1px solid ${halalColor}40` }}>{halalStatus}</span>
           </div>
-
-          <p
-            className="
-              text-gray-500
-              font-medium
-            "
-          >
-            {symbol}
-          </p>
-
+          <span style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.05em" }}>{symbol} · NSE</span>
         </div>
-
-        {/* RIGHT */}
-
-        <div
-          className="
-            flex
-            flex-col
-            items-start
-            lg:items-end
-          "
-        >
-
-          <div
-            className="
-              text-5xl
-              font-bold
-              tracking-tight
-              text-black
-            "
-          >
-            ₹ {safePrice.toFixed(2)}
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: 30, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.5px", fontFamily: "'JetBrains Mono', monospace" }}>₹{currentPrice.toFixed(2)}</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, marginTop: 4, color: isUp ? "var(--up)" : "var(--down)", fontSize: 13, fontWeight: 700 }}>
+            <span className="live-dot" style={{ width: 7, height: 7, borderRadius: "50%", background: isUp ? "var(--up)" : "var(--down)", display: "inline-block" }} />
+            {isUp ? <TrendingUp size={14}/> : <TrendingDown size={14}/>}
+            {isUp?"+":""}{change.toFixed(2)}%
           </div>
-
-          <div
-            className={`
-              flex
-              items-center
-              gap-2
-              mt-3
-              font-semibold
-              ${
-                isPositive
-                  ? "text-emerald-600"
-                  : "text-red-500"
-              }
-            `}
-          >
-
-            <div
-              className={`
-                w-2.5
-                h-2.5
-                rounded-full
-                animate-pulse
-                ${
-                  isPositive
-                    ? "bg-emerald-500"
-                    : "bg-red-500"
-                }
-              `}
-            />
-
-            {isPositive ? (
-              <TrendingUp size={18} />
-            ) : (
-              <TrendingDown size={18} />
-            )}
-
-            <span>
-              {isPositive ? "+" : ""}
-              {safeChange.toFixed(2)}%
-            </span>
-
+          <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end" }}>
+            <button className="btn-primary" style={{ background: "var(--up)", padding: "8px 18px", fontSize: 13 }}>Buy</button>
+            <button className="btn-primary" style={{ background: "var(--down)", padding: "8px 18px", fontSize: 13 }}>Sell</button>
           </div>
-
-          {/* ACTION BUTTONS */}
-
-          <div
-            className="
-              flex
-              gap-3
-              mt-5
-            "
-          >
-
-            <button
-              className="
-                bg-emerald-500
-                hover:bg-emerald-600
-                text-white
-                px-5
-                py-2.5
-                rounded-xl
-                font-semibold
-                transition-all
-              "
-            >
-              Buy
-            </button>
-
-            <button
-              className="
-                bg-red-500
-                hover:bg-red-600
-                text-white
-                px-5
-                py-2.5
-                rounded-xl
-                font-semibold
-                transition-all
-              "
-            >
-              Sell
-            </button>
-
-          </div>
-
         </div>
-
       </div>
 
-      {/* TIMEFRAME */}
-
-      <div
-        className="
-          flex
-          flex-wrap
-          gap-3
-          mb-6
-        "
-      >
-
-        {timeframeOptions.map((item) => (
-
-          <button
-            key={item}
-            onClick={() =>
-              setSelectedTimeframe(item)
-            }
-            className={`
-              px-5
-              py-2.5
-              rounded-xl
-              text-sm
-              font-semibold
-              transition-all
-              border
-
-              ${
-                selectedTimeframe === item
-                  ? `
-                    bg-black
-                    text-white
-                    border-black
-                  `
-                  : `
-                    bg-white
-                    text-gray-700
-                    border-gray-200
-                    hover:border-black
-                  `
-              }
-            `}
-          >
-            {item}
-          </button>
-
+      {/* Timeframe */}
+      <div style={{ padding: "14px 24px 0", display: "flex", gap: 6 }}>
+        {TF.map(t => (
+          <button key={t} onClick={() => setTf(t)} style={{
+            padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s",
+            background: tf===t ? "var(--accent-teal)" : "var(--bg-hover)",
+            color: tf===t ? "#fff" : "var(--text-secondary)",
+            border: "none",
+          }}>{t}</button>
         ))}
-
       </div>
 
-      {/* CHART */}
-
-      <div
-        className="
-          h-[300px]
-          md:h-[360px]
-          w-full
-        "
-      >
-
+      {/* Chart */}
+      <div style={{ padding: "8px 8px 8px", height: 300 }}>
         {liveData.length > 0 ? (
-
-          <ResponsiveContainer
-            width="100%"
-            height="100%"
-          >
-
-            <AreaChart
-              data={liveData}
-              margin={{
-                top: 10,
-                right: 15,
-                left: -20,
-                bottom: 0,
-              }}
-            >
-
-              {/* GRADIENT */}
-
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={liveData} margin={{ top:8, right:8, left:-20, bottom:0 }}>
               <defs>
-
-                <linearGradient
-                  id="stockGradient"
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="1"
-                >
-
-                  <stop
-                    offset="5%"
-                    stopColor="#14B8A6"
-                    stopOpacity={0.22}
-                  />
-
-                  <stop
-                    offset="95%"
-                    stopColor="#14B8A6"
-                    stopOpacity={0}
-                  />
-
+                <linearGradient id="sGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--accent-teal)" stopOpacity={0.15}/>
+                  <stop offset="100%" stopColor="var(--accent-teal)" stopOpacity={0}/>
                 </linearGradient>
-
               </defs>
-
-              {/* GRID */}
-
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="#F1F5F9"
-                vertical={false}
-              />
-
-              {/* X AXIS */}
-
-              <XAxis
-                dataKey="time"
-                tick={{
-                  fontSize: 12,
-                  fill: "#64748B",
-                }}
-                axisLine={false}
-                tickLine={false}
-              />
-
-              {/* Y AXIS */}
-
-              <YAxis
-                domain={[
-                  (dataMin: number) =>
-                    dataMin * 0.995,
-
-                  (dataMax: number) =>
-                    dataMax * 1.005,
-                ]}
-                tick={{
-                  fontSize: 12,
-                  fill: "#64748B",
-                }}
-                axisLine={false}
-                tickLine={false}
-              />
-
-              {/* TOOLTIP */}
-
-              <Tooltip
-                contentStyle={{
-                  borderRadius: "16px",
-                  border: "1px solid #E2E8F0",
-                  boxShadow:
-                    "0px 4px 20px rgba(0,0,0,0.08)",
-                  backgroundColor: "#fff",
-                }}
-                formatter={(value: number) => [
-                  `₹ ${value.toFixed(2)}`,
-                  "Price",
-                ]}
-              />
-
-              {/* AREA */}
-
-              <Area
-                type="monotone"
-                dataKey="price"
-                stroke="#14B8A6"
-                strokeWidth={3}
-                fill="url(#stockGradient)"
-                dot={false}
-                isAnimationActive={true}
-                animationDuration={800}
-                animationEasing="ease-out"
-                activeDot={{
-                  r: 7,
-                  fill: "#14B8A6",
-                  stroke: "#fff",
-                  strokeWidth: 2,
-                }}
-              />
-
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false}/>
+              <XAxis dataKey="time" tick={{ fontSize:11, fill:"var(--text-muted)" }} axisLine={false} tickLine={false}/>
+              <YAxis domain={[(d:number)=>d*.995,(d:number)=>d*1.005]} tick={{ fontSize:11, fill:"var(--text-muted)" }} axisLine={false} tickLine={false}/>
+              <Tooltip content={<CustomTooltip/>}/>
+              <Area type="monotone" dataKey="price" stroke="var(--accent-teal)" strokeWidth={2.5}
+                fill="url(#sGrad)" dot={false}
+                activeDot={{ r:5, fill:"var(--accent-teal)", stroke:"var(--bg-surface)", strokeWidth:2 }}/>
             </AreaChart>
-
           </ResponsiveContainer>
-
         ) : (
-
-          <div
-            className="
-              h-full
-              flex
-              items-center
-              justify-center
-              text-gray-400
-              text-sm
-            "
-          >
-            No chart data available
-          </div>
-
+          <div style={{ height:"100%", display:"flex", alignItems:"center", justifyContent:"center", color:"var(--text-muted)", fontSize:13 }}>No data available</div>
         )}
-
       </div>
 
-      {/* BOTTOM METRICS */}
-
-      <div
-        className="
-          grid
-          grid-cols-2
-          md:grid-cols-4
-          gap-4
-          mt-8
-        "
-      >
-
-        <div
-          className="
-            bg-gray-50
-            rounded-2xl
-            p-4
-          "
-        >
-
-          <p
-            className="
-              text-sm
-              text-gray-500
-              mb-1
-            "
-          >
-            Market Cap
-          </p>
-
-          <h4
-            className="
-              text-lg
-              font-bold
-              text-black
-            "
-          >
-            ₹ 6.2T
-          </h4>
-
-        </div>
-
-        <div
-          className="
-            bg-gray-50
-            rounded-2xl
-            p-4
-          "
-        >
-
-          <p
-            className="
-              text-sm
-              text-gray-500
-              mb-1
-            "
-          >
-            PE Ratio
-          </p>
-
-          <h4
-            className="
-              text-lg
-              font-bold
-              text-black
-            "
-          >
-            28.6
-          </h4>
-
-        </div>
-
-        <div
-          className="
-            bg-gray-50
-            rounded-2xl
-            p-4
-          "
-        >
-
-          <p
-            className="
-              text-sm
-              text-gray-500
-              mb-1
-            "
-          >
-            52W High
-          </p>
-
-          <h4
-            className="
-              text-lg
-              font-bold
-              text-black
-            "
-          >
-            ₹ 1680
-          </h4>
-
-        </div>
-
-        <div
-          className="
-            bg-gray-50
-            rounded-2xl
-            p-4
-          "
-        >
-
-          <p
-            className="
-              text-sm
-              text-gray-500
-              mb-1
-            "
-          >
-            Volume
-          </p>
-
-          <h4
-            className="
-              text-lg
-              font-bold
-              text-black
-            "
-          >
-            2.1M
-          </h4>
-
-        </div>
-
+      {/* Metrics */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", borderTop:"1px solid var(--border)" }}>
+        {metrics.map((m, i) => (
+          <div key={m.label} style={{ padding:"14px 20px", borderRight: i<3 ? "1px solid var(--border)" : "none" }}>
+            <p style={{ fontSize:11, color:"var(--text-muted)", marginBottom:4, fontWeight:500 }}>{m.label}</p>
+            <p style={{ fontSize:15, fontWeight:800, color:"var(--text-primary)", fontFamily:"'JetBrains Mono', monospace" }}>{m.value}</p>
+          </div>
+        ))}
       </div>
-
     </div>
-  );
+  )
 }

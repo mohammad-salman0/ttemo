@@ -1,313 +1,77 @@
 "use client"
 
-import {
- useEffect,
- useState,
-} from "react"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import api from "@/services/api"
+import { Search } from "lucide-react"
 
-import {
- useRouter,
-} from "next/navigation"
+type Stock = { symbol:string; companyName:string; halalStatus:string }
 
-import api
- from "@/services/api"
+export default function NavbarSearch() {
+  const router = useRouter()
+  const [query, setQuery] = useState("")
+  const [stocks, setStocks] = useState<Stock[]>([])
+  const [results, setResults] = useState<Stock[]>([])
+  const [focused, setFocused] = useState(false)
 
+  useEffect(() => {
+    api.get("/stocks").then(r => setStocks(r.data)).catch(console.log)
+  }, [])
 
-type Stock = {
+  useEffect(() => {
+    if (!query.trim()) { setResults([]); return }
+    setResults(stocks.filter(s =>
+      s.symbol.toLowerCase().includes(query.toLowerCase()) ||
+      s.companyName.toLowerCase().includes(query.toLowerCase())
+    ).slice(0, 6))
+  }, [query, stocks])
 
- symbol: string
+  return (
+    <div style={{ position:"relative", width:"100%", maxWidth:380 }}>
+      <div style={{
+        display:"flex", alignItems:"center", gap:9,
+        background:"var(--bg-base)", border:`1.5px solid ${focused?"var(--accent-teal)":"var(--border)"}`,
+        borderRadius:9, padding:"8px 14px", transition:"border-color 0.15s",
+      }}>
+        <Search size={14} color="var(--text-muted)" />
+        <input type="text" placeholder="Search stocks, symbols..."
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setTimeout(() => setFocused(false), 180)}
+          style={{ background:"transparent", border:"none", outline:"none", fontSize:13.5, color:"var(--text-primary)", width:"100%" }}
+        />
+      </div>
 
- companyName: string
-
- halalStatus: string
-
-}
-
-
-export default function
-NavbarSearch() {
-
- const router =
-  useRouter()
-
- const [query,
-  setQuery] =
-
-  useState("")
-
- const [stocks,
-  setStocks] =
-
-  useState<Stock[]>([])
-
- const [results,
-  setResults] =
-
-  useState<Stock[]>([])
-
- const [focused,
-  setFocused] =
-
-  useState(false)
-
-
- /*
-   FETCH STOCKS
- */
- useEffect(() => {
-
-  fetchStocks()
-
- }, [])
-
-
- const fetchStocks =
-  async () => {
-
-   try {
-
-    const response =
-     await api.get(
-      "/stocks"
-     )
-
-    setStocks(
-     response.data
-    )
-
-   } catch (error) {
-
-    console.log(error)
-
-   }
-
-  }
-
-
- /*
-   FILTER SEARCH
- */
- useEffect(() => {
-
-  if (!query.trim()) {
-
-   setResults([])
-
-   return
-
-  }
-
-
-  const filtered =
-   stocks.filter((stock) =>
-
-    stock.symbol
-     .toLowerCase()
-
-     .includes(
-      query.toLowerCase()
-     )
-
-    ||
-
-    stock.companyName
-     .toLowerCase()
-
-     .includes(
-      query.toLowerCase()
-     )
-
-   )
-
-
-  setResults(
-   filtered.slice(0, 6)
+      {focused && results.length > 0 && (
+        <div style={{
+          position:"absolute", top:"calc(100% + 8px)", left:0, width:"100%", zIndex:99,
+          background:"var(--bg-elevated)", border:"1px solid var(--border)", borderRadius:10,
+          boxShadow:"var(--shadow-lg)", overflow:"hidden",
+        }}>
+          {results.map((s, i) => (
+            <button key={s.symbol} onClick={() => { router.push(`/stocks/${s.symbol}`); setQuery(""); setResults([]) }}
+              style={{
+                width:"100%", textAlign:"left", padding:"10px 14px", background:"transparent", border:"none",
+                borderBottom: i<results.length-1 ? "1px solid var(--border)" : "none",
+                cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center",
+                transition:"background 0.1s",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)" }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent" }}
+            >
+              <div>
+                <p style={{ fontSize:13, fontWeight:700, color:"var(--text-primary)", fontFamily:"'JetBrains Mono', monospace" }}>{s.symbol}</p>
+                <p style={{ fontSize:11.5, color:"var(--text-muted)", marginTop:2 }}>{s.companyName}</p>
+              </div>
+              <span style={{ fontSize:11, fontWeight:700, padding:"3px 7px", borderRadius:5,
+                background: s.halalStatus==="Halal"?"var(--up-bg)":"var(--down-bg)",
+                color: s.halalStatus==="Halal"?"var(--up)":"var(--down)",
+              }}>{s.halalStatus}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
-
- }, [query, stocks])
-
-
- return (
-
-  <div
-   className="
-    relative
-    w-full
-    max-w-md
-   "
-  >
-
-   <input
-
-    type="text"
-
-    placeholder="
-     Search stocks...
-    "
-
-    value={query}
-
-    onChange={(e) =>
-     setQuery(
-      e.target.value
-     )
-    }
-
-    onFocus={() =>
-     setFocused(true)
-    }
-
-    onBlur={() => {
-
-     setTimeout(() => {
-
-      setFocused(false)
-
-     }, 200)
-
-    }}
-
-    className="
-     w-full
-     bg-gray-100
-     border
-     border-gray-200
-     rounded-2xl
-     px-5
-     py-3
-     outline-none
-     focus:border-black
-     transition
-    "
-
-   />
-
-
-   {/* RESULTS */}
-
-   {
-    focused &&
-    results.length > 0 && (
-
-     <div
-      className="
-       absolute
-       top-full
-       mt-3
-       w-full
-       bg-white
-       border
-       rounded-2xl
-       shadow-xl
-       overflow-hidden
-       z-50
-      "
-     >
-
-      {
-       results.map((stock) => (
-
-        <button
-
-         key={stock.symbol}
-
-         onClick={() => {
-
-          router.push(
-
-           `/stocks/${stock.symbol}`
-
-          )
-
-          setQuery("")
-
-          setResults([])
-
-         }}
-
-         className="
-          w-full
-          px-5
-          py-4
-          text-left
-          hover:bg-gray-50
-          transition
-          border-b
-          last:border-b-0
-         "
-        >
-
-         <div
-          className="
-           flex
-           items-center
-           justify-between
-          "
-         >
-
-          <div>
-
-           <h3
-            className="
-             font-semibold
-            "
-           >
-
-            {stock.symbol}
-
-           </h3>
-
-
-           <p
-            className="
-             text-sm
-             text-gray-500
-             mt-1
-            "
-           >
-
-            {stock.companyName}
-
-           </p>
-
-          </div>
-
-
-          <span
-           className={`
-            text-xs
-            px-3
-            py-1
-            rounded-full
-
-            ${
-             stock.halalStatus
-              === "Halal"
-
-              ? "bg-emerald-100 text-emerald-700"
-
-              : "bg-red-100 text-red-700"
-            }
-           `}
-          >
-
-           {stock.halalStatus}
-
-          </span>
-
-         </div>
-
-        </button>
-
-       ))
-      }
-
-     </div>
-
-    )
-   }
-
-  </div>
-
- )
 }

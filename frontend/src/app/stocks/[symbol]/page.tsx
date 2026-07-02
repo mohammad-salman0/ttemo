@@ -1,1246 +1,321 @@
+// src/app/stocks/[symbol]/page.tsx
 "use client";
 
-import {
- useEffect,
- useState,
-} from "react";
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import DashboardLayout from "@/layouts/DashboardLayout";
+import ProtectedRoute from "@/components/ProtectedRoutes";
+import api from "@/services/api";
+import CandlestickChart from "@/components/CandlestickChart";
+import TradeModal from "@/components/TradeModal";
+import { usePortfolio } from "@/context/PortfolioContext";
+import { TrendingUp, TrendingDown, Star, ArrowUpRight, ArrowDownRight, Brain, Activity, AlertTriangle, CheckCircle } from "lucide-react";
 
-import {
- useParams,
-} from "next/navigation";
-
-import DashboardLayout
- from "@/layouts/DashboardLayout";
-
-import api
- from "@/services/api";
-
-import ProtectedRoutes
- from "@/components/ProtectedRoutes";
-
-import CandlestickChart
- from "@/components/CandlestickChart";
-
-import TradeModal
- from "@/components/TradeModal";
-
-import {
- usePortfolio,
-} from "@/context/PortfolioContext";
-
-import {
- TrendingUp,
-} from "lucide-react";
-
-
-type Candle = {
-
- time: number;
-
- open: number;
-
- high: number;
-
- low: number;
-
- close: number;
-
- volume?: number;
-
-};
-
+type Candle = { time: number; open: number; high: number; low: number; close: number; volume?: number };
 
 type Stock = {
-
- symbol: string;
-
- companyName: string;
-
- industry: string;
-
- price: number | null;
-
- halalStatus:
-  | "Halal"
-  | "Non-Halal"
-  | "Review Needed";
-
- change: number;
-
- complianceScore?: number;
-
+  symbol: string;
+  companyName: string;
+  industry: string;
+  price: number | null;
+  halalStatus: "Halal" | "Non-Halal" | "Review Needed";
+  change: number;
+  // real AI fields returned by /stocks/:symbol
+  aiPrediction?: number;       // 1 = bullish, 0 = bearish
+  aiSignal?: string;           // "Bullish" | "Bearish"
+  aiConfidence?: number;       // 0-100
+  rsi?: number;
+  volatility?: number;
+  momentum?: number;
+  return30d?: number;
+  riskScore?: number;
+  investmentStrength?: number;
+  aiReason?: string;
 };
 
+const TIMEFRAMES = ["1D", "1W", "1M", "1Y"];
 
-export default function
-StockDetailPage() {
+const HALAL_COLOR: Record<string, string> = { "Halal": "var(--up)", "Non-Halal": "var(--down)", "Review Needed": "var(--warn)" }
+const HALAL_BG: Record<string, string> = { "Halal": "var(--up-bg)", "Non-Halal": "var(--down-bg)", "Review Needed": "var(--warn-bg)" }
+const HALAL_BORDER: Record<string, string> = { "Halal": "var(--up-border)", "Non-Halal": "var(--down-border)", "Review Needed": "rgba(217,119,6,0.25)" }
 
- const params =
-  useParams();
+function riskLabel(score?: number): string {
+  if (score == null) return "—";
+  if (score >= 70) return "High";
+  if (score >= 40) return "Moderate";
+  return "Low";
+}
 
- const rawSymbol =
-  params?.symbol;
+function riskColor(score?: number): string {
+  if (score == null) return "var(--text-muted)";
+  if (score >= 70) return "var(--down)";
+  if (score >= 40) return "var(--warn)";
+  return "var(--up)";
+}
 
- const symbol =
+export default function StockDetailPage() {
+  const params = useParams();
+  const rawSymbol = params?.symbol;
+  const symbol = typeof rawSymbol === "string" ? rawSymbol : Array.isArray(rawSymbol) ? rawSymbol[0] : "";
 
-  typeof rawSymbol ===
-  "string"
+  const { refreshPortfolio, refreshOrders } = usePortfolio();
+  const [stock, setStock] = useState<Stock | null>(null);
+  const [chartData, setChartData] = useState<Candle[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedTF, setSelectedTF] = useState("1M");
+  const [buyOpen, setBuyOpen] = useState(false);
+  const [sellOpen, setSellOpen] = useState(false);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
+  const [inWatchlist, setInWatchlist] = useState(false);
 
-   ? rawSymbol
+  // performance computed from real history data, not synthetic multipliers
+  const [performance, setPerformance] = useState<Record<string, number | null>>({
+    "1D": null, "1W": null, "1M": null, "1Y": null,
+  });
 
-   : Array.isArray(
-       rawSymbol
-     )
-
-     ? rawSymbol[0]
-
-     : "";
-
-
- const {
-
-  refreshPortfolio,
-  refreshOrders,
-
- } = usePortfolio();
-
-
- const [stock, setStock] =
-  useState<Stock | null>(
-   null
-  );
-
- const [chartData, setChartData] =
-  useState<Candle[]>([]);
-
- const [loading, setLoading] =
-  useState(false);
-
- const [selectedTimeframe,
-  setSelectedTimeframe] =
-   useState("1M");
-
-
- const [buyOpen,
-  setBuyOpen] =
-   useState(false);
-
- const [sellOpen,
-  setSellOpen] =
-   useState(false);
-
-
- const [watchlistLoading,
-  setWatchlistLoading] =
-   useState(false);
-
-
- /*
- ===================================
- FETCH STOCK
- ===================================
- */
-
- const fetchStock =
-  async () => {
-
-   try {
-
-    setLoading(true);
-
-    const response =
-     await api.get(
-
-      `/stocks/${symbol}`
-
-     );
-
-    setStock(
-     response.data
-    );
-
-   } catch (error) {
-
-    console.log(error);
-
-   } finally {
-
-    setLoading(false);
-
-   }
-
+  const fetchStock = async () => {
+    try { setLoading(true); const r = await api.get(`/stocks/${symbol}`); setStock(r.data); }
+    catch (e) { console.log(e); }
+    finally { setLoading(false); }
   };
 
-
- /*
- ===================================
- FETCH HISTORY
- ===================================
- */
-
- const fetchHistory =
-  async (
-
-   range = "1mo",
-   interval = "1d"
-
-  ) => {
-
-   try {
-
-    const response =
-     await api.get(
-
-      `/stocks/${symbol}/history`,
-
-      {
-
-       params: {
-
-        range,
-        interval,
-
-       },
-
-      }
-
-     );
-
-    setChartData(
-     response.data
-    );
-
-   } catch (error) {
-
-    console.log(error);
-
-   }
-
+  const fetchHistory = async (range = "1mo", interval = "1d") => {
+    try { const r = await api.get(`/stocks/${symbol}/history`, { params: { range, interval } }); setChartData(r.data); }
+    catch (e) { console.log(e); }
   };
 
+  // Pull real % change for each timeframe from actual history endpoints,
+  // instead of multiplying today's change by arbitrary factors.
+  const fetchPerformance = async () => {
+    const ranges: Record<string, string> = { "1D": "5d", "1W": "5d", "1M": "1mo", "1Y": "1y" };
+    const results: Record<string, number | null> = { "1D": null, "1W": null, "1M": null, "1Y": null };
 
- /*
- ===================================
- WATCHLIST
- ===================================
- */
+    await Promise.all(Object.entries(ranges).map(async ([key, range]) => {
+      try {
+        const r = await api.get(`/stocks/${symbol}/history`, { params: { range, interval: range === "5d" ? "1d" : "1wk" } });
+        const candles: Candle[] = r.data;
+        if (candles?.length >= 2) {
+          const first = candles[0].close;
+          const last = candles[candles.length - 1].close;
+          results[key] = +(((last - first) / first) * 100).toFixed(2);
+        }
+      } catch (e) { /* leave as null, rendered as — */ }
+    }));
 
- const addToWatchlist =
-  async () => {
-
-   try {
-
-    setWatchlistLoading(
-     true
-    );
-
-    await api.post(
-
-     "/watchlist/add",
-
-     {
-
-      symbol:
-       stock?.symbol,
-
-      companyName:
-       stock?.companyName,
-
-     }
-
-    );
-
-    alert(
-     "Added to watchlist"
-    );
-
-   } catch (error) {
-
-    console.log(error);
-
-    alert(
-     "Failed to add watchlist"
-    );
-
-   } finally {
-
-    setWatchlistLoading(
-     false
-    );
-
-   }
-
+    setPerformance(results);
   };
 
-
- /*
- ===================================
- INITIAL LOAD
- ===================================
- */
-
- useEffect(() => {
-
-  if (!symbol) return;
-
-  fetchStock();
-
-  fetchHistory();
-
- }, [symbol]);
-
-
- /*
- ===================================
- TIMEFRAME
- ===================================
- */
-
- const handleTimeframe =
-  (timeframe: string) => {
-
-   setSelectedTimeframe(
-    timeframe
-   );
-
-   switch (timeframe) {
-
-    case "1D":
-
-     fetchHistory(
-      "5d",
-      "15m"
-     );
-
-     break;
-
-    case "1W":
-
-     fetchHistory(
-      "5d",
-      "30m"
-     );
-
-     break;
-
-    case "1M":
-
-     fetchHistory(
-      "1mo",
-      "1d"
-     );
-
-     break;
-
-    case "1Y":
-
-     fetchHistory(
-      "1y",
-      "1wk"
-     );
-
-     break;
-
-    default:
-
-     fetchHistory();
-
-   }
-
+  const checkWatchlist = async () => {
+    try {
+      const r = await api.get("/watchlist");
+      const list = r.data?.stocks || [];
+      setInWatchlist(list.some((s: any) => s.symbol?.toUpperCase() === symbol.toUpperCase()));
+    } catch (e) { /* non-critical */ }
   };
 
-
- /*
- ===================================
- AFTER TRADE
- ===================================
- */
-
- const handleTradeSuccess =
-  async () => {
-
-   await fetchStock();
-
-   await refreshPortfolio();
-
-   await refreshOrders();
-
+  const addToWatchlist = async () => {
+    if (inWatchlist) return;
+    try {
+      setWatchlistLoading(true);
+      await api.post("/watchlist/add", { symbol: stock?.symbol, companyName: stock?.companyName });
+      setInWatchlist(true);
+    } catch { /* could surface a toast here if desired */ }
+    finally { setWatchlistLoading(false); }
   };
 
+  useEffect(() => {
+    if (!symbol) return;
+    fetchStock();
+    fetchHistory();
+    fetchPerformance();
+    checkWatchlist();
+  }, [symbol]);
 
- /*
- ===================================
- PERFORMANCE DATA
- ===================================
- */
+  const handleTimeframe = (tf: string) => {
+    setSelectedTF(tf);
+    const map: Record<string, [string, string]> = {
+      "1D": ["5d", "15m"], "1W": ["5d", "30m"], "1M": ["1mo", "1d"], "1Y": ["1y", "1wk"],
+    };
+    const [range, interval] = map[tf] || ["1mo", "1d"];
+    fetchHistory(range, interval);
+  };
 
- const performance = {
+  const handleTradeSuccess = async () => {
+    await fetchStock();
+    await refreshPortfolio();
+    await refreshOrders();
+  };
 
-  "1D":
-   stock?.change || 0,
+  if (loading || !stock) {
+    return (
+      <ProtectedRoute>
+        <DashboardLayout>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "60vh", gap: 16 }}>
+            <div className="spin" style={{ width: 28, height: 28, borderRadius: "50%", border: "3px solid var(--border)", borderTopColor: "var(--accent-teal)" }} />
+            <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading stock data...</p>
+          </div>
+        </DashboardLayout>
+      </ProtectedRoute>
+    );
+  }
 
-  "1W":
-   Number(
-    ((stock?.change || 0) * 1.8)
-    .toFixed(2)
-   ),
+  const isUp = stock.change >= 0;
 
-  "1M":
-   Number(
-    ((stock?.change || 0) * 3.5)
-    .toFixed(2)
-   ),
+  // ── REAL AI DATA (from backend, not client-side guesses) ──
+  const isBullish = stock.aiPrediction === 1;
+  const aiSignal = stock.aiSignal || (isBullish ? "Bullish" : "Bearish");
+  const aiConfidence = stock.aiConfidence ?? null;
+  const risk = riskLabel(stock.riskScore);
+  const riskCol = riskColor(stock.riskScore);
+  const aiReason = stock.aiReason || "AI analysis is currently unavailable for this stock.";
 
-  "1Y":
-   Number(
-    ((stock?.change || 0) * 8)
-    .toFixed(2)
-   ),
-
- };
-
-
- /*
- ===================================
- LOADING
- ===================================
- */
-
- if (loading || !stock) {
+  const halalColor = HALAL_COLOR[stock.halalStatus] || "var(--warn)";
+  const halalBg = HALAL_BG[stock.halalStatus] || "var(--warn-bg)";
+  const halalBorder = HALAL_BORDER[stock.halalStatus] || "rgba(217,119,6,0.25)";
 
   return (
-
-   <ProtectedRoutes>
-
-    <DashboardLayout>
-
-     <div
-      className="
-       flex
-       items-center
-       justify-center
-       h-[60vh]
-      "
-     >
-
-      <p
-       className="
-        text-gray-500
-        text-lg
-       "
-      >
-
-       Loading stock...
-
-      </p>
-
-     </div>
-
-    </DashboardLayout>
-
-   </ProtectedRoutes>
-
-  );
-
- }
-
-
- /*
- ===================================
- SAFE AI VALUES
- ===================================
- */
-
- const complianceScore =
-
-  stock?.complianceScore || 85;
-
-
- const sentiment =
-
-  stock?.change >= 0
-   ? "Bullish"
-   : "Bearish";
-
-
- const confidence =
-
-  70 +
-  Math.floor(
-   complianceScore / 4
-  );
-
-
- const risk =
-
-  stock?.change > 3
-
-   ? "High"
-
-   : stock?.change > 0
-
-   ? "Moderate"
-
-   : "Elevated";
-
-
- const recommendation =
-
-  stock?.change >= 0
-
-   ? "Hold"
-
-   : "Watch";
-
-
- return (
-
-  <ProtectedRoutes>
-
-   <DashboardLayout>
-
-    <div className="space-y-10">
-
-     <div
-      className="
-       bg-white
-       rounded-3xl
-       border
-       shadow-sm
-       p-6
-       md:p-8
-      "
-     >
-
-      {/* HEADER */}
-
-      <div
-       className="
-        flex
-        flex-col
-        lg:flex-row
-        lg:justify-between
-        gap-8
-        mb-10
-       "
-      >
-
-       <div>
-
-        <div
-         className="
-          flex
-          items-center
-          gap-4
-          mb-3
-         "
-        >
-
-         <h1
-          className="
-           text-5xl
-           font-bold
-           text-black
-          "
-         >
-
-          {stock.companyName}
-
-         </h1>
-
-         <span
-          className={`
-           px-4
-           py-2
-           rounded-full
-           text-sm
-           font-semibold
-
-           ${
-            stock.halalStatus
-             === "Halal"
-
-              ? "bg-emerald-100 text-emerald-700"
-
-              : stock.halalStatus
-              === "Non-Halal"
-
-              ? "bg-red-100 text-red-700"
-
-              : "bg-yellow-100 text-yellow-700"
-           }
-          `}
-         >
-
-          {stock.halalStatus}
-
-         </span>
-
-        </div>
-
-        <p
-         className="
-          text-gray-500
-          text-lg
-          mb-2
-         "
-        >
-
-         {stock.symbol}
-
-        </p>
-
-        <p
-         className="
-          text-gray-400
-         "
-        >
-
-         Industry:
-         {" "}
-         {stock.industry}
-
-        </p>
-
-       </div>
-
-
-       <div
-        className="
-         flex
-         flex-col
-         items-start
-         lg:items-end
-        "
-       >
-
-        <h2
-         className="
-          text-6xl
-          font-bold
-          text-black
-         "
-        >
-
-         ₹{" "}
-
-         {
-          stock.price
-           ?.toFixed(2)
-         }
-
-        </h2>
-
-        <p
-         className={`
-          mt-4
-          text-2xl
-          font-semibold
-
-          ${
-           stock.change >= 0
-            ? "text-emerald-600"
-            : "text-red-500"
-          }
-         `}
-        >
-
-         {
-          stock.change >= 0
-           ? "+"
-           : ""
-         }
-
-         {
-          stock.change
-           .toFixed(2)
-         }%
-
-        </p>
-
-       </div>
-
-      </div>
-
-
-      {/* PERFORMANCE */}
-
-      <div
-       className="
-        grid
-        grid-cols-2
-        md:grid-cols-4
-        gap-4
-        mb-8
-       "
-      >
-
-       {
-        Object.entries(
-         performance
-        ).map(
-
-         ([key, value]) => (
-
-          <div
-           key={key}
-
-           className="
-            bg-gray-50
-            border
-            rounded-2xl
-            p-5
-           "
-          >
-
-           <p
-            className="
-             text-sm
-             text-gray-500
-             mb-2
-            "
-           >
-
-            {key}
-
-           </p>
-
-           <h3
-            className={`
-             text-2xl
-             font-bold
-
-             ${
-              value >= 0
-
-               ? "text-emerald-600"
-
-               : "text-red-500"
-             }
-            `}
-           >
-
-            {
-             value >= 0
-              ? "+"
-              : ""
-            }
-
-            {value}%
-
-           </h3>
-
+    <ProtectedRoute>
+      <DashboardLayout>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+          {/* STOCK HEADER CARD */}
+          <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "var(--shadow-sm)", overflow: "hidden" }}>
+            <div style={{ height: 3, background: halalColor }} />
+            <div style={{ padding: "24px 28px" }}>
+
+              {/* Company + Price row */}
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 20, marginBottom: 24 }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 6 }}>
+                    <h1 style={{ fontSize: 26, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.4px" }}>
+                      {stock.companyName}
+                    </h1>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 6, background: halalBg, color: halalColor, border: `1px solid ${halalBorder}` }}>
+                      {stock.halalStatus}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: 13, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace", marginBottom: 4 }}>
+                    {stock.symbol} · NSE
+                  </p>
+                  <p style={{ fontSize: 12, color: "var(--text-faint)" }}>Industry: {stock.industry}</p>
+                </div>
+
+                <div style={{ textAlign: "right" }}>
+                  <p style={{ fontSize: 36, fontWeight: 800, color: "var(--text-primary)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "-0.5px" }}>
+                    ₹{stock.price?.toFixed(2)}
+                  </p>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, marginTop: 6, color: isUp ? "var(--up)" : "var(--down)", fontSize: 15, fontWeight: 700 }}>
+                    <span className="live-dot" style={{ width: 7, height: 7, borderRadius: "50%", background: isUp ? "var(--up)" : "var(--down)", display: "inline-block" }} />
+                    {isUp ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
+                    {isUp ? "+" : ""}{stock.change.toFixed(2)}%
+                  </div>
+                </div>
+              </div>
+
+              {/* PERFORMANCE GRID — real % change from history endpoint */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 20 }}>
+                {Object.entries(performance).map(([key, val]) => (
+                  <div key={key} style={{ background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px" }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>{key}</p>
+                    {val == null ? (
+                      <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-muted)" }}>—</p>
+                    ) : (
+                      <p style={{ fontSize: 18, fontWeight: 800, color: val >= 0 ? "var(--up)" : "var(--down)", fontFamily: "'JetBrains Mono', monospace" }}>
+                        {val >= 0 ? "+" : ""}{val}%
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* TIMEFRAME BUTTONS */}
+              <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+                {TIMEFRAMES.map(tf => (
+                  <button key={tf} onClick={() => handleTimeframe(tf)} style={{
+                    padding: "7px 16px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                    cursor: "pointer", transition: "all 0.15s", border: "none",
+                    background: selectedTF === tf ? "var(--accent-teal)" : "var(--bg-hover)",
+                    color: selectedTF === tf ? "#fff" : "var(--text-secondary)",
+                  }}>{tf}</button>
+                ))}
+              </div>
+
+              {/* CANDLESTICK CHART */}
+              <CandlestickChart data={chartData} />
+
+              {/* ACTION BUTTONS */}
+              <div style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
+                <button onClick={() => setBuyOpen(true)} className="btn-primary" style={{ background: "var(--up)", padding: "11px 28px", fontSize: 14 }}>
+                  <ArrowUpRight size={15} /> Buy Stock
+                </button>
+                <button onClick={() => setSellOpen(true)} className="btn-primary" style={{ background: "var(--down)", padding: "11px 28px", fontSize: 14 }}>
+                  <ArrowDownRight size={15} /> Sell Stock
+                </button>
+                <button
+                  onClick={addToWatchlist}
+                  disabled={watchlistLoading || inWatchlist}
+                  className="btn-ghost"
+                  style={{
+                    padding: "11px 28px", fontSize: 14, display: "flex", alignItems: "center", gap: 6,
+                    cursor: inWatchlist ? "default" : "pointer",
+                    color: inWatchlist ? "var(--up)" : undefined,
+                    borderColor: inWatchlist ? "var(--up-border)" : undefined,
+                  }}
+                >
+                  {inWatchlist
+                    ? (<><CheckCircle size={14} /> In Watchlist</>)
+                    : (<><Star size={14} /> {watchlistLoading ? "Adding..." : "Watchlist"}</>)
+                  }
+                </button>
+              </div>
+            </div>
           </div>
 
-         )
+          {/* AI OUTLOOK CARD — driven entirely by real backend AI fields */}
+          <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "var(--shadow-sm)", overflow: "hidden" }}>
+            <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
+              <Brain size={16} color="var(--indigo)" />
+              <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>AI Market Outlook</h2>
+            </div>
 
-        )
-       }
+            {/* AI METRICS */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 0 }}>
+              {[
+                { label: "Signal",     value: aiSignal,                                  color: isBullish ? "var(--up)" : "var(--down)", icon: Activity,      bg: isBullish ? "var(--up-bg)" : "var(--down-bg)" },
+                { label: "Confidence", value: aiConfidence != null ? `${aiConfidence}%` : "—", color: "var(--indigo)",                    icon: Brain,         bg: "var(--indigo-bg)" },
+                { label: "Risk Level", value: risk,                                       color: riskCol,                                  icon: AlertTriangle, bg: "var(--warn-bg)" },
+                { label: "RSI (14)",   value: stock.rsi != null ? stock.rsi.toFixed(1) : "—", color: "var(--accent-teal)",                 icon: TrendingUp,    bg: "var(--accent-teal-bg)" },
+              ].map((item, i, arr) => {
+                const Icon = item.icon
+                return (
+                  <div key={item.label} style={{ padding: "18px 20px", borderRight: i < arr.length - 1 ? "1px solid var(--border)" : "none", background: item.bg }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                      <Icon size={13} color={item.color} />
+                      <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{item.label}</p>
+                    </div>
+                    <p style={{ fontSize: 20, fontWeight: 800, color: item.color, fontFamily: "'JetBrains Mono', monospace" }}>{item.value}</p>
+                  </div>
+                )
+              })}
+            </div>
 
-      </div>
-
-
-      {/* TIMEFRAME */}
-
-      <div
-       className="
-        flex
-        flex-wrap
-        gap-3
-        mb-6
-       "
-      >
-
-       {[
-        "1D",
-        "1W",
-        "1M",
-        "1Y",
-       ].map((item) => (
-
-        <button
-         key={item}
-
-         onClick={() =>
-          handleTimeframe(item)
-         }
-
-         className={`
-          px-5
-          py-3
-          rounded-2xl
-          font-semibold
-          border
-          transition-all
-
-          ${
-           selectedTimeframe
-            === item
-
-             ? "bg-black text-white border-black"
-
-             : "bg-white text-gray-700 border-gray-200 hover:border-black"
-          }
-         `}
-        >
-
-         {item}
-
-        </button>
-
-       ))}
-
-      </div>
-
-
-      {/* CHART */}
-
-      <CandlestickChart
-       data={chartData}
-      />
-
-
-      {/* AI OUTLOOK */}
-
-      <div
-       className="
-        mt-10
-        bg-gradient-to-r
-        from-black
-        to-gray-900
-        text-white
-        rounded-3xl
-        p-8
-       "
-      >
-
-       <div
-        className="
-         flex
-         items-center
-         gap-3
-         mb-8
-        "
-       >
-
-        <TrendingUp
-         size={28}
-        />
-
-        <h2
-         className="
-          text-3xl
-          font-bold
-         "
-        >
-
-         AI Market Outlook
-
-        </h2>
-
-       </div>
-
-
-       {/* AI GRID */}
-
-       <div
-        className="
-         grid
-         grid-cols-1
-         md:grid-cols-2
-         lg:grid-cols-4
-         gap-5
-         mb-8
-        "
-       >
-
-        <div
-         className="
-          bg-white/10
-          rounded-2xl
-          p-5
-          border
-          border-white/10
-         "
-        >
-
-         <p
-          className="
-           text-sm
-           text-gray-300
-           mb-2
-          "
-         >
-
-          Sentiment
-
-         </p>
-
-         <h3
-          className="
-           text-2xl
-           font-bold
-           text-emerald-400
-          "
-         >
-
-          {sentiment}
-
-         </h3>
+            {/* AI SUMMARY — real reasoning string from backend, no compliance score shown */}
+            <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border)", background: "var(--bg-base)" }}>
+              <p style={{ fontSize: 13.5, color: "var(--text-secondary)", lineHeight: 1.75 }}>
+                {aiReason}
+              </p>
+            </div>
+          </div>
 
         </div>
 
-
-        <div
-         className="
-          bg-white/10
-          rounded-2xl
-          p-5
-          border
-          border-white/10
-         "
-        >
-
-         <p
-          className="
-           text-sm
-           text-gray-300
-           mb-2
-          "
-         >
-
-          Confidence
-
-         </p>
-
-         <h3
-          className="
-           text-2xl
-           font-bold
-          "
-         >
-
-          {confidence}%
-
-         </h3>
-
-        </div>
-
-
-        <div
-         className="
-          bg-white/10
-          rounded-2xl
-          p-5
-          border
-          border-white/10
-         "
-        >
-
-         <p
-          className="
-           text-sm
-           text-gray-300
-           mb-2
-          "
-         >
-
-          Risk Level
-
-         </p>
-
-         <h3
-          className="
-           text-2xl
-           font-bold
-           text-yellow-400
-          "
-         >
-
-          {risk}
-
-         </h3>
-
-        </div>
-
-
-        <div
-         className="
-          bg-white/10
-          rounded-2xl
-          p-5
-          border
-          border-white/10
-         "
-        >
-
-         <p
-          className="
-           text-sm
-           text-gray-300
-           mb-2
-          "
-         >
-
-          Recommendation
-
-         </p>
-
-         <h3
-          className="
-           text-2xl
-           font-bold
-           text-cyan-400
-          "
-         >
-
-          {recommendation}
-
-         </h3>
-
-        </div>
-
-       </div>
-
-
-       {/* AI SUMMARY */}
-
-       <div
-        className="
-         bg-white/10
-         rounded-2xl
-         p-6
-         border
-         border-white/10
-        "
-       >
-
-        <p
-         className="
-          text-lg
-          leading-8
-          text-gray-200
-         "
-        >
-
-         {
-          stock.companyName
-         }
-
-         {" "}
-         is currently showing
-
-         {" "}
-
-         <span className="font-semibold text-white">
-
-          {
-           stock.change >= 0
-            ? "positive"
-            : "mixed"
-          }
-
-         </span>
-
-         {" "}
-         momentum based on recent
-         market activity.
-
-         The stock maintains a
-
-         {" "}
-
-         <span className="font-semibold text-emerald-400">
-
-          {
-           stock.halalStatus
-          }
-
-         </span>
-
-         {" "}
-         halal compliance profile with
-         a compliance score of
-
-         {" "}
-
-         <span className="font-semibold text-cyan-400">
-
-          {complianceScore}%
-
-         </span>
-
-         . AI analysis suggests
-         investors should monitor
-         momentum, sector movement,
-         and long-term growth stability
-         before making additional
-         trading decisions.
-
-        </p>
-
-       </div>
-
-      </div>
-
-
-      {/* ACTIONS */}
-
-      <div
-       className="
-        flex
-        flex-wrap
-        gap-4
-        mt-8
-       "
-      >
-
-       <button
-
-        onClick={() =>
-         setBuyOpen(true)
-        }
-
-        className="
-         bg-emerald-500
-         hover:bg-emerald-600
-         text-white
-         px-8
-         py-3
-         rounded-2xl
-         font-semibold
-         transition
-        "
-       >
-
-        Buy Stock
-
-       </button>
-
-
-       <button
-
-        onClick={() =>
-         setSellOpen(true)
-        }
-
-        className="
-         bg-red-500
-         hover:bg-red-600
-         text-white
-         px-8
-         py-3
-         rounded-2xl
-         font-semibold
-         transition
-        "
-       >
-
-        Sell Stock
-
-       </button>
-
-
-       <button
-
-        onClick={
-         addToWatchlist
-        }
-
-        disabled={
-         watchlistLoading
-        }
-
-        className="
-         bg-black
-         hover:bg-gray-800
-         text-white
-         px-8
-         py-3
-         rounded-2xl
-         font-semibold
-         transition
-        "
-       >
-
-        {
-         watchlistLoading
-
-          ? "Adding..."
-
-          : "Add to Watchlist"
-        }
-
-       </button>
-
-      </div>
-
-     </div>
-
-    </div>
-
-
-    {/* BUY MODAL */}
-
-    <TradeModal
-
-     isOpen={buyOpen}
-
-     onClose={() =>
-      setBuyOpen(false)
-     }
-
-     type="BUY"
-
-     symbol={stock.symbol}
-
-     companyName={
-      stock.companyName
-     }
-
-     price={
-      stock.price || 0
-     }
-
-     onSuccess={
-      handleTradeSuccess
-     }
-
-    />
-
-
-    {/* SELL MODAL */}
-
-    <TradeModal
-
-     isOpen={sellOpen}
-
-     onClose={() =>
-      setSellOpen(false)
-     }
-
-     type="SELL"
-
-     symbol={stock.symbol}
-
-     companyName={
-      stock.companyName
-     }
-
-     price={
-      stock.price || 0
-     }
-
-     onSuccess={
-      handleTradeSuccess
-     }
-
-    />
-
-   </DashboardLayout>
-
-  </ProtectedRoutes>
-
- );
-
+        {/* MODALS */}
+        <TradeModal isOpen={buyOpen} onClose={() => setBuyOpen(false)} type="BUY"
+          symbol={stock.symbol} companyName={stock.companyName} price={stock.price || 0} onSuccess={handleTradeSuccess} />
+        <TradeModal isOpen={sellOpen} onClose={() => setSellOpen(false)} type="SELL"
+          symbol={stock.symbol} companyName={stock.companyName} price={stock.price || 0} onSuccess={handleTradeSuccess} />
+
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
 }

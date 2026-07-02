@@ -1,1078 +1,285 @@
+// src/app/portfolio/page.tsx
 "use client"
 
-import Link
- from "next/link"
+import Link from "next/link"
+import DashboardLayout from "@/layouts/DashboardLayout"
+import ProtectedRoute from "@/components/ProtectedRoutes"
+import { Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, PieChart, ShieldCheck } from "lucide-react"
+import { PieChart as RechartsPieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts"
+import { usePortfolio } from "@/context/PortfolioContext"
 
-import DashboardLayout
- from "@/layouts/DashboardLayout"
+const COLORS = ["#00c896", "#6366f1", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"]
 
-import ProtectedRoute
- from "@/components/ProtectedRoutes"
+const CustomTooltip = ({ active, payload }: any) => {
+  if (!active || !payload?.length) return null
+  return (
+    <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 12px", boxShadow: "var(--shadow-md)" }}>
+      <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{payload[0].name}</p>
+      <p style={{ fontSize: 12, color: "var(--accent-teal)", fontFamily: "'JetBrains Mono', monospace" }}>{payload[0].value}%</p>
+    </div>
+  )
+}
 
-import {
+export default function PortfolioPage() {
+  const { portfolio, loading } = usePortfolio()
 
- Wallet,
- TrendingUp,
- ArrowUpRight,
- ArrowDownRight,
- PieChart,
+  if (loading || !portfolio) {
+    return (
+      <ProtectedRoute>
+        <DashboardLayout>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "60vh", gap: 16 }}>
+            <div className="spin" style={{ width: 28, height: 28, borderRadius: "50%", border: "3px solid var(--border)", borderTopColor: "var(--accent-teal)" }} />
+            <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading portfolio...</p>
+          </div>
+        </DashboardLayout>
+      </ProtectedRoute>
+    )
+  }
 
-} from "lucide-react"
+  const allocationData = portfolio.holdings.map(h => ({ name: h.symbol, value: h.currentValue || 0 }))
 
-import {
+  const halalData = [
+    { name: "Halal",     value: 80 },
+    { name: "Non-Halal", value: 10 },
+    { name: "Review",    value: 10 },
+  ]
+  const halalColors = ["var(--up)", "var(--down)", "var(--warn)"]
 
- PieChart as RechartsPieChart,
- Pie,
- Cell,
- Tooltip,
- ResponsiveContainer,
+  const isProfit = portfolio.totalProfit >= 0
+  const isReturn = portfolio.totalReturnPercentage >= 0
 
-} from "recharts"
+  const stats = [
+    { label: "Wallet Balance",   value: `₹${portfolio.balance?.toLocaleString()}`,                     icon: Wallet,    accent: "var(--accent-teal)" },
+    { label: "Invested Amount",  value: `₹${portfolio.totalInvestedValue?.toLocaleString()}`,           icon: PieChart,  accent: "var(--indigo)" },
+    { label: "Current Value",    value: `₹${portfolio.currentPortfolioValue?.toLocaleString()}`,        icon: TrendingUp,accent: "var(--warn)" },
+    { label: "Total Profit",     value: `₹${portfolio.totalProfit?.toLocaleString()}`,                  icon: TrendingUp,accent: isProfit ? "var(--up)" : "var(--down)", valueColor: isProfit ? "var(--up)" : "var(--down)" },
+  ]
 
-import {
- usePortfolio,
-} from "@/context/PortfolioContext"
-
-
-const COLORS = [
-
- "#3B82F6",
- "#10B981",
- "#F59E0B",
- "#EF4444",
- "#8B5CF6",
- "#06B6D4",
-
-]
-
-
-export default function
-PortfolioPage() {
-
- const {
-
-  portfolio,
-  loading,
-
- } = usePortfolio()
-
-
- /*
- ===================================
- LOADING
- ===================================
- */
-
- if (loading || !portfolio) {
+  const cols = ["Symbol", "Qty", "Avg Price", "Current Price", "Current Value", "Return %", "P&L", "Allocation", "Actions"]
 
   return (
-
-   <ProtectedRoute>
-
-    <DashboardLayout>
-
-     <div
-      className="
-       flex
-       items-center
-       justify-center
-       h-[70vh]
-      "
-     >
-
-      <p
-       className="
-        text-gray-500
-        text-lg
-       "
-      >
-
-       Loading Portfolio...
-
-      </p>
-
-     </div>
-
-    </DashboardLayout>
-
-   </ProtectedRoute>
-
-  )
-
- }
-
-
- /*
- ===================================
- PORTFOLIO ALLOCATION
- ===================================
- */
-
- const allocationData =
-
-  portfolio.holdings.map(
-
-   (holding) => ({
-
-    name:
-     holding.symbol,
-
-    value:
-     holding.currentValue || 0,
-
-   })
-
-  )
-
-
- /*
- ===================================
- HALAL DATA
- ===================================
- */
-
- const halalData = [
-
-  {
-   name: "Halal",
-   value: 80,
-  },
-
-  {
-   name: "Non-Halal",
-   value: 10,
-  },
-
-  {
-   name: "Review",
-   value: 10,
-  },
-
- ]
-
-
- return (
-
-  <ProtectedRoute>
-
-   <DashboardLayout>
-
-    <div className="space-y-10">
-
-     {/* HEADER */}
-
-     <div>
-
-      <h1
-       className="
-        text-4xl
-        font-bold
-        text-gray-900
-       "
-      >
-
-       Portfolio
-
-      </h1>
-
-
-      <p
-       className="
-        text-gray-500
-        mt-3
-        text-lg
-       "
-      >
-
-       Track your holdings,
-       investments, and profits.
-
-      </p>
-
-     </div>
-
-
-     {/* STATS */}
-
-     <div
-      className="
-       grid
-       grid-cols-1
-       md:grid-cols-2
-       xl:grid-cols-4
-       gap-6
-      "
-     >
-
-      {/* WALLET */}
-
-      <div
-       className="
-        bg-white
-        rounded-3xl
-        border
-        p-8
-        shadow-sm
-       "
-      >
-
-       <div
-        className="
-         flex
-         items-center
-         justify-between
-        "
-       >
-
-        <div>
-
-         <p
-          className="
-           text-gray-500
-           text-sm
-          "
-         >
-
-          Wallet Balance
-
-         </p>
-
-
-         <h2
-          className="
-           text-4xl
-           font-bold
-           mt-4
-          "
-         >
-
-          ₹
-          {" "}
-
-          {
-           portfolio.balance
-            .toLocaleString()
-          }
-
-         </h2>
-
-        </div>
-
-
-        <div
-         className="
-          w-16
-          h-16
-          rounded-3xl
-          bg-emerald-100
-          flex
-          items-center
-          justify-center
-          text-emerald-600
-         "
-        >
-
-         <Wallet size={30} />
-
-        </div>
-
-       </div>
-
-      </div>
-
-
-      {/* INVESTED */}
-
-      <div
-       className="
-        bg-white
-        rounded-3xl
-        border
-        p-8
-        shadow-sm
-       "
-      >
-
-       <div
-        className="
-         flex
-         items-center
-         justify-between
-        "
-       >
-
-        <div>
-
-         <p
-          className="
-           text-gray-500
-           text-sm
-          "
-         >
-
-          Invested Amount
-
-         </p>
-
-
-         <h2
-          className="
-           text-4xl
-           font-bold
-           mt-4
-          "
-         >
-
-          ₹
-          {" "}
-
-          {
-           portfolio.totalInvestedValue
-            ?.toLocaleString()
-          }
-
-         </h2>
-
-        </div>
-
-
-        <div
-         className="
-          w-16
-          h-16
-          rounded-3xl
-          bg-blue-100
-          flex
-          items-center
-          justify-center
-          text-blue-600
-         "
-        >
-
-         <PieChart size={30} />
-
-        </div>
-
-       </div>
-
-      </div>
-
-
-      {/* CURRENT VALUE */}
-
-      <div
-       className="
-        bg-white
-        rounded-3xl
-        border
-        p-8
-        shadow-sm
-       "
-      >
-
-       <div
-        className="
-         flex
-         items-center
-         justify-between
-        "
-       >
-
-        <div>
-
-         <p
-          className="
-           text-gray-500
-           text-sm
-          "
-         >
-
-          Current Value
-
-         </p>
-
-
-         <h2
-          className="
-           text-4xl
-           font-bold
-           mt-4
-          "
-         >
-
-          ₹
-          {" "}
-
-          {
-           portfolio.currentPortfolioValue
-            ?.toLocaleString()
-          }
-
-         </h2>
-
-        </div>
-
-
-        <div
-         className="
-          w-16
-          h-16
-          rounded-3xl
-          bg-violet-100
-          flex
-          items-center
-          justify-center
-          text-violet-600
-         "
-        >
-
-         <TrendingUp size={30} />
-
-        </div>
-
-       </div>
-
-      </div>
-
-
-      {/* PROFIT */}
-
-      <div
-       className="
-        bg-white
-        rounded-3xl
-        border
-        p-8
-        shadow-sm
-       "
-      >
-
-       <div
-        className="
-         flex
-         items-center
-         justify-between
-        "
-       >
-
-        <div>
-
-         <p
-          className="
-           text-gray-500
-           text-sm
-          "
-         >
-
-          Total Profit
-
-         </p>
-
-
-         <h2
-          className={`
-           text-4xl
-           font-bold
-           mt-4
-
-           ${
-            portfolio.totalProfit >= 0
-
-             ? "text-emerald-600"
-
-             : "text-red-500"
-           }
-          `}
-         >
-
-          ₹
-          {" "}
-
-          {
-           portfolio.totalProfit
-            ?.toLocaleString()
-          }
-
-         </h2>
-
-
-         <p
-          className={`
-           mt-3
-           text-sm
-           font-medium
-
-           ${
-            portfolio.totalReturnPercentage >= 0
-
-             ? "text-emerald-600"
-
-             : "text-red-500"
-           }
-          `}
-         >
-
-          {
-           portfolio.totalReturnPercentage >= 0
-            ? "+"
-            : ""
-          }
-
-          {
-           portfolio.totalReturnPercentage
-          }%
-
-         </p>
-
-        </div>
-
-
-        <div
-         className="
-          w-16
-          h-16
-          rounded-3xl
-          bg-green-100
-          flex
-          items-center
-          justify-center
-          text-green-600
-         "
-        >
-
-         <TrendingUp size={30} />
-
-        </div>
-
-       </div>
-
-      </div>
-
-     </div>
-
-
-     {/* CHARTS */}
-
-     <div
-      className="
-       grid
-       grid-cols-1
-       xl:grid-cols-2
-       gap-6
-      "
-     >
-
-      {/* HALAL CHART */}
-
-      <div
-       className="
-        bg-white
-        rounded-3xl
-        border
-        p-8
-        shadow-sm
-       "
-      >
-
-       <h2
-        className="
-         text-2xl
-         font-bold
-         mb-6
-        "
-       >
-
-        Halal Allocation
-
-       </h2>
-
-       <div className="h-[320px]">
-
-        <ResponsiveContainer
-         width="100%"
-         height="100%"
-        >
-
-         <RechartsPieChart>
-
-          <Pie
-
-           data={halalData}
-
-           dataKey="value"
-
-           nameKey="name"
-
-           outerRadius={120}
-
-           label
-
-          >
-
-           <Cell fill="#10B981" />
-           <Cell fill="#EF4444" />
-           <Cell fill="#F59E0B" />
-
-          </Pie>
-
-          <Tooltip />
-
-         </RechartsPieChart>
-
-        </ResponsiveContainer>
-
-       </div>
-
-      </div>
-
-
-      {/* PORTFOLIO ALLOCATION */}
-
-      <div
-       className="
-        bg-white
-        rounded-3xl
-        border
-        p-8
-        shadow-sm
-       "
-      >
-
-       <h2
-        className="
-         text-2xl
-         font-bold
-         mb-6
-        "
-       >
-
-        Portfolio Allocation
-
-       </h2>
-
-       <div className="h-[320px]">
-
-        <ResponsiveContainer
-         width="100%"
-         height="100%"
-        >
-
-         <RechartsPieChart>
-
-          <Pie
-
-           data={allocationData}
-
-           dataKey="value"
-
-           nameKey="name"
-
-           outerRadius={120}
-
-           label
-
-          >
-
-           {
-            allocationData.map(
-
-             (_, index) => (
-
-              <Cell
-
-               key={index}
-
-               fill={
-                COLORS[
-                 index %
-                 COLORS.length
-                ]
-               }
-
-              />
-
-             )
-
-            )
-           }
-
-          </Pie>
-
-          <Tooltip />
-
-         </RechartsPieChart>
-
-        </ResponsiveContainer>
-
-       </div>
-
-      </div>
-
-     </div>
-
-
-     {/* HOLDINGS */}
-
-     <div
-      className="
-       bg-white
-       rounded-3xl
-       border
-       shadow-sm
-       overflow-hidden
-      "
-     >
-
-      <div
-       className="
-        px-8
-        py-6
-        border-b
-        flex
-        items-center
-        justify-between
-       "
-      >
-
-       <div>
-
-        <h2
-         className="
-          text-2xl
-          font-bold
-         "
-        >
-
-         Holdings
-
-        </h2>
-
-        <p
-         className="
-          text-gray-500
-          mt-1
-         "
-        >
-
-         Live portfolio performance
-
-        </p>
-
-       </div>
-
-      </div>
-
-
-      {
-       portfolio.holdings.length === 0
-
-        ? (
-
-         <div
-          className="
-           p-10
-           text-center
-           text-gray-500
-          "
-         >
-
-          No holdings yet
-
-         </div>
-
-        )
-
-        : (
-
-         <div className="overflow-x-auto">
-
-          <table
-           className="
-            min-w-[1200px]
-            w-full
-           "
-          >
-
-           <thead
-            className="
-             bg-gray-50
-            "
-           >
-
-            <tr>
-
-             <th className="text-left px-8 py-5 text-sm font-semibold whitespace-nowrap">
-              Symbol
-             </th>
-
-             <th className="text-left px-8 py-5 text-sm font-semibold whitespace-nowrap">
-              Quantity
-             </th>
-
-             <th className="text-left px-8 py-5 text-sm font-semibold whitespace-nowrap">
-              Avg Price
-             </th>
-
-             <th className="text-left px-8 py-5 text-sm font-semibold whitespace-nowrap">
-              Current Price
-             </th>
-
-             <th className="text-left px-8 py-5 text-sm font-semibold whitespace-nowrap">
-              Current Value
-             </th>
-
-             <th className="text-left px-8 py-5 text-sm font-semibold whitespace-nowrap">
-              Return %
-             </th>
-
-             <th className="text-left px-8 py-5 text-sm font-semibold whitespace-nowrap">
-              P/L
-             </th>
-
-             <th className="text-left px-8 py-5 text-sm font-semibold whitespace-nowrap">
-              Allocation
-             </th>
-
-             <th className="text-left px-8 py-5 text-sm font-semibold whitespace-nowrap">
-              Actions
-             </th>
-
-            </tr>
-
-           </thead>
-
-
-           <tbody>
-
-            {
-             portfolio.holdings.map(
-
-              (
-               holding,
-               index
-              ) => (
-
-               <tr
-                key={index}
-                className="border-t"
-               >
-
-                <td
-                 className="
-                  px-8
-                  py-5
-                  font-semibold
-                  whitespace-nowrap
-                 "
+    <ProtectedRoute>
+      <DashboardLayout>
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+
+          {/* HEADER */}
+          <div>
+            <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.4px", fontFamily: "'Barlow', sans-serif" }}>
+              Portfolio
+            </h1>
+            <p style={{ color: "var(--text-muted)", marginTop: 6, fontSize: 14 }}>
+              Track your holdings, investments, and profits.
+            </p>
+          </div>
+
+          {/* STATS GRID */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+            {stats.map(item => {
+              const Icon = item.icon
+              return (
+                <div key={item.label} style={{
+                  background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12,
+                  padding: "18px 20px", boxShadow: "var(--shadow-sm)", borderTop: `3px solid ${item.accent}`,
+                  transition: "box-shadow 0.2s",
+                }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-md)" }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-sm)" }}
                 >
-
-                 {holding.symbol}
-
-                </td>
-
-
-                <td className="px-8 py-5 whitespace-nowrap">
-
-                 {holding.quantity}
-
-                </td>
-
-
-                <td className="px-8 py-5 whitespace-nowrap">
-
-                 ₹
-                 {" "}
-
-                 {
-                  holding.averagePrice
-                   ?.toFixed(2)
-                 }
-
-                </td>
-
-
-                <td className="px-8 py-5 whitespace-nowrap">
-
-                 ₹
-                 {" "}
-
-                 {
-                  holding.currentPrice
-                   ?.toFixed(2)
-                 }
-
-                </td>
-
-
-                <td className="px-8 py-5 font-semibold whitespace-nowrap">
-
-                 ₹
-                 {" "}
-
-                 {
-                  holding.currentValue
-                   ?.toLocaleString()
-                 }
-
-                </td>
-
-
-                <td
-                 className={`
-                  px-8
-                  py-5
-                  font-semibold
-                  whitespace-nowrap
-
-                  ${
-                   holding.returnPercentage >= 0
-
-                    ? "text-emerald-600"
-
-                    : "text-red-500"
-                  }
-                 `}
-                >
-
-                 {
-                  holding.returnPercentage >= 0
-                   ? "+"
-                   : ""
-                 }
-
-                 {
-                  holding.returnPercentage
-                   ?.toFixed(2)
-                 }%
-
-                </td>
-
-
-                <td
-                 className={`
-                  px-8
-                  py-5
-                  font-semibold
-                  whitespace-nowrap
-
-                  ${
-                   holding.profitLoss >= 0
-
-                    ? "text-emerald-600"
-
-                    : "text-red-500"
-                  }
-                 `}
-                >
-
-                 ₹
-                 {" "}
-
-                 {
-                  holding.profitLoss
-                   ?.toLocaleString()
-                 }
-
-                </td>
-
-
-                <td className="px-8 py-5 whitespace-nowrap">
-
-                 {
-                  holding.allocationPercentage
-                   ?.toFixed(1)
-                 }%
-
-                </td>
-
-
-                <td className="px-8 py-5 whitespace-nowrap">
-
-                 <div className="flex gap-3">
-
-                  <Link
-                   href={`/stocks/${holding.symbol}`}
-                  >
-
-                   <button
-                    className="
-                     flex
-                     items-center
-                     gap-2
-                     bg-emerald-500
-                     hover:bg-emerald-600
-                     text-white
-                     px-4
-                     py-2
-                     rounded-xl
-                     text-sm
-                     transition
-                    "
-                   >
-
-                    <ArrowUpRight size={16} />
-
-                    Buy
-
-                   </button>
-
-                  </Link>
-
-
-                  <Link
-                   href={`/stocks/${holding.symbol}`}
-                  >
-
-                   <button
-                    className="
-                     flex
-                     items-center
-                     gap-2
-                     bg-red-500
-                     hover:bg-red-600
-                     text-white
-                     px-4
-                     py-2
-                     rounded-xl
-                     text-sm
-                     transition
-                    "
-                   >
-
-                    <ArrowDownRight size={16} />
-
-                    Sell
-
-                   </button>
-
-                  </Link>
-
-                 </div>
-
-                </td>
-
-               </tr>
-
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-muted)" }}>{item.label}</p>
+                    <div style={{ width: 30, height: 30, borderRadius: 7, background: `${item.accent}18`, display: "flex", alignItems: "center", justifyContent: "center", color: item.accent }}>
+                      <Icon size={14} />
+                    </div>
+                  </div>
+                  <p style={{ fontSize: 22, fontWeight: 800, color: (item as any).valueColor || "var(--text-primary)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "-0.3px" }}>
+                    {item.value}
+                  </p>
+                  {item.label === "Total Profit" && (
+                    <p style={{ fontSize: 12, fontWeight: 700, color: isReturn ? "var(--up)" : "var(--down)", marginTop: 6, display: "flex", alignItems: "center", gap: 3 }}>
+                      {isReturn ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                      {isReturn ? "+" : ""}{portfolio.totalReturnPercentage}%
+                    </p>
+                  )}
+                </div>
               )
-             )
-            }
+            })}
+          </div>
 
-           </tbody>
+          {/* CHARTS ROW */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
 
-          </table>
+            {/* HALAL ALLOCATION */}
+            <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "var(--shadow-sm)", overflow: "hidden" }}>
+              <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
+                <ShieldCheck size={14} color="var(--up)" />
+                <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Halal Allocation</h2>
+              </div>
+              <div style={{ padding: 8, height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <Pie data={halalData} dataKey="value" nameKey="name" outerRadius={100} innerRadius={55} paddingAngle={3} strokeWidth={0}>
+                      {halalData.map((_, i) => <Cell key={i} fill={["#16a34a", "#dc2626", "#d97706"][i]} opacity={0.85} />)}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend formatter={v => <span style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 500 }}>{v}</span>} />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
 
-         </div>
+            {/* PORTFOLIO ALLOCATION */}
+            <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "var(--shadow-sm)", overflow: "hidden" }}>
+              <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
+                <PieChart size={14} color="var(--indigo)" />
+                <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Portfolio Allocation</h2>
+              </div>
+              <div style={{ padding: 8, height: 300 }}>
+                {allocationData.length === 0 ? (
+                  <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <p style={{ fontSize: 13, color: "var(--text-muted)" }}>No holdings to display</p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPieChart>
+                      <Pie data={allocationData} dataKey="value" nameKey="name" outerRadius={100} innerRadius={55} paddingAngle={3} strokeWidth={0}>
+                        {allocationData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} opacity={0.85} />)}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend formatter={v => <span style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 500 }}>{v}</span>} />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+          </div>
 
-        )
-      }
+          {/* HOLDINGS TABLE */}
+          <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, boxShadow: "var(--shadow-sm)", overflow: "hidden" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--bg-base)" }}>
+              <div>
+                <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Holdings</h2>
+                <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Live portfolio performance</p>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span className="live-dot" style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--up)", display: "inline-block" }} />
+                <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>LIVE</span>
+              </div>
+            </div>
 
-     </div>
+            {portfolio.holdings.length === 0 ? (
+              <div style={{ padding: "60px 22px", textAlign: "center" }}>
+                <PieChart size={36} color="var(--border)" style={{ margin: "0 auto 14px" }} />
+                <p style={{ fontSize: 14, color: "var(--text-muted)", fontWeight: 500 }}>No holdings yet</p>
+                <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 6 }}>Start trading to build your portfolio</p>
+                <Link href="/stocks">
+                  <button className="btn-primary" style={{ display: "inline-flex", marginTop: 16 }}>
+                    <TrendingUp size={14} /> Browse Stocks
+                  </button>
+                </Link>
+              </div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
+                  <thead>
+                    <tr style={{ background: "var(--bg-base)", borderBottom: "1px solid var(--border)" }}>
+                      {cols.map(col => (
+                        <th key={col} style={{ textAlign: "left", padding: "11px 18px", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+                          {col}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {portfolio.holdings.map((holding, i) => {
+                      const ret = holding.returnPercentage || 0
+                      const pl = holding.profitLoss || 0
+                      return (
+                        <tr key={i} style={{ borderBottom: "1px solid var(--border)", transition: "background 0.12s" }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)" }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent" }}
+                        >
+                          {/* SYMBOL */}
+                          <td style={{ padding: "13px 18px", whiteSpace: "nowrap" }}>
+                            <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)", fontFamily: "'JetBrains Mono', monospace" }}>{holding.symbol}</span>
+                          </td>
 
-    </div>
+                          {/* QTY */}
+                          <td style={{ padding: "13px 18px", whiteSpace: "nowrap" }}>
+                            <span style={{ fontSize: 13, color: "var(--text-secondary)", fontFamily: "'JetBrains Mono', monospace" }}>{holding.quantity}</span>
+                          </td>
 
-   </DashboardLayout>
+                          {/* AVG PRICE */}
+                          <td style={{ padding: "13px 18px", whiteSpace: "nowrap" }}>
+                            <span style={{ fontSize: 13, color: "var(--text-secondary)", fontFamily: "'JetBrains Mono', monospace" }}>₹{holding.averagePrice?.toFixed(2)}</span>
+                          </td>
 
-  </ProtectedRoute>
+                          {/* CURRENT PRICE */}
+                          <td style={{ padding: "13px 18px", whiteSpace: "nowrap" }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", fontFamily: "'JetBrains Mono', monospace" }}>₹{holding.currentPrice?.toFixed(2)}</span>
+                          </td>
 
- )
+                          {/* CURRENT VALUE */}
+                          <td style={{ padding: "13px 18px", whiteSpace: "nowrap" }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--accent-teal)", fontFamily: "'JetBrains Mono', monospace" }}>₹{holding.currentValue?.toLocaleString()}</span>
+                          </td>
+
+                          {/* RETURN % */}
+                          <td style={{ padding: "13px 18px", whiteSpace: "nowrap" }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: ret >= 0 ? "var(--up)" : "var(--down)", display: "flex", alignItems: "center", gap: 3, fontFamily: "'JetBrains Mono', monospace" }}>
+                              {ret >= 0 ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
+                              {ret >= 0 ? "+" : ""}{ret?.toFixed(2)}%
+                            </span>
+                          </td>
+
+                          {/* P&L */}
+                          <td style={{ padding: "13px 18px", whiteSpace: "nowrap" }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: pl >= 0 ? "var(--up)" : "var(--down)", fontFamily: "'JetBrains Mono', monospace" }}>
+                              {pl >= 0 ? "+" : ""}₹{pl?.toLocaleString()}
+                            </span>
+                          </td>
+
+                          {/* ALLOCATION */}
+                          <td style={{ padding: "13px 18px", whiteSpace: "nowrap" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <div style={{ width: 52, height: 4, borderRadius: 2, background: "var(--bg-base)", overflow: "hidden", border: "1px solid var(--border)" }}>
+                                <div style={{ height: "100%", width: `${holding.allocationPercentage || 0}%`, background: "var(--accent-teal)", borderRadius: 2 }} />
+                              </div>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", fontFamily: "'JetBrains Mono', monospace" }}>
+                                {holding.allocationPercentage?.toFixed(1)}%
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* ACTIONS */}
+                          <td style={{ padding: "13px 18px", whiteSpace: "nowrap" }}>
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <Link href={`/stocks/${holding.symbol}`}>
+                                <button style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer", background: "var(--up-bg)", color: "var(--up)", border: "1px solid var(--up-border)", transition: "opacity 0.15s" }}
+                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = "0.75" }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = "1" }}>
+                                  <ArrowUpRight size={12} /> Buy
+                                </button>
+                              </Link>
+                              <Link href={`/stocks/${holding.symbol}`}>
+                                <button style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer", background: "var(--down-bg)", color: "var(--down)", border: "1px solid var(--down-border)", transition: "opacity 0.15s" }}
+                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = "0.75" }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = "1" }}>
+                                  <ArrowDownRight size={12} /> Sell
+                                </button>
+                              </Link>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+        </div>
+      </DashboardLayout>
+    </ProtectedRoute>
+  )
 }

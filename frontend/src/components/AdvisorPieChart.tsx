@@ -1,183 +1,41 @@
 "use client"
 
-import {
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts"
 
- PieChart,
- Pie,
- Cell,
- Tooltip,
- ResponsiveContainer,
+type PortfolioItem = { symbol: string; allocation: number }
+type Props = { data: PortfolioItem[] }
 
-} from "recharts"
+const COLORS = ["#00c896","#6366f1","#f59e0b","#ef4444","#06b6d4","#8b5cf6","#10b981"]
 
-
-type PortfolioItem = {
-
- symbol: string
-
- allocation: number
-
-}
-
-
-type Props = {
-
- data: PortfolioItem[]
-
-}
-
-
-export default function
-AdvisorPieChart({
-
- data,
-
-}: Props) {
-
- /*
- ====================================
- SAFE DATA
- ====================================
- */
-
- const safeData =
-
-  (data || [])
-
-   .filter(
-    (item) => item
-   )
-
-   .map((item) => ({
-
-    symbol:
-     item.symbol,
-
-    allocation:
-     Number(
-      item.allocation || 0
-     ),
-
-   }))
-
-
- /*
- ====================================
- COLORS
- ====================================
- */
-
- const COLORS = [
-
-  "#2563EB",
-  "#10B981",
-  "#F59E0B",
-  "#EF4444",
-  "#8B5CF6",
-
- ]
-
-
- /*
- ====================================
- EMPTY STATE
- ====================================
- */
-
- if (
-  safeData.length === 0
- ) {
-
+const CustomTooltip = ({ active, payload }: any) => {
+  if (!active || !payload?.length) return null
   return (
-
-   <div
-    className="
-     w-full
-     h-[350px]
-     flex
-     items-center
-     justify-center
-     text-gray-400
-    "
-   >
-
-    No allocation data available
-
-   </div>
-
+    <div style={{ background:"var(--bg-elevated)", border:"1px solid var(--border)", borderRadius:8, padding:"8px 12px", boxShadow:"var(--shadow-md)" }}>
+      <p style={{ fontSize:13, fontWeight:700, color:"var(--text-primary)" }}>{payload[0].name}</p>
+      <p style={{ fontSize:13, color:"var(--accent-teal)", fontFamily:"'JetBrains Mono', monospace" }}>{payload[0].value.toFixed(2)}%</p>
+    </div>
   )
+}
 
- }
-
-
- return (
-
-  <div
-   className="
-    w-full
-    h-[350px]
-   "
-  >
-
-   <ResponsiveContainer
-    width="100%"
-    height="100%"
-   >
-
-    <PieChart>
-
-     <Pie
-
-      data={safeData}
-
-      dataKey="allocation"
-
-      nameKey="symbol"
-
-      cx="50%"
-
-      cy="50%"
-
-      outerRadius={110}
-
-      innerRadius={60}
-
-      paddingAngle={3}
-
-      label
-
-     >
-
-      {
-       safeData.map(
-        (_, index) => (
-
-         <Cell
-
-          key={index}
-
-          fill={
-           COLORS[
-            index %
-            COLORS.length
-           ]
-          }
-
-         />
-
-        )
-       )
-      }
-
-     </Pie>
-
-     <Tooltip />
-
-    </PieChart>
-
-   </ResponsiveContainer>
-
-  </div>
-
- )
+export default function AdvisorPieChart({ data }: Props) {
+  const safe = (data||[]).filter(Boolean).map(d => ({ symbol:d.symbol, allocation:Number(d.allocation||0) }))
+  if (!safe.length) return (
+    <div style={{ height:320, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:10, color:"var(--text-muted)" }}>
+      <div style={{ width:60, height:60, borderRadius:"50%", border:"2px dashed var(--border)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>—</div>
+      <p style={{ fontSize:13 }}>No allocation data</p>
+    </div>
+  )
+  return (
+    <div style={{ height:320 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie data={safe} dataKey="allocation" nameKey="symbol" cx="50%" cy="45%" outerRadius={105} innerRadius={60} paddingAngle={3} strokeWidth={0}>
+            {safe.map((_, i) => <Cell key={i} fill={COLORS[i%COLORS.length]} opacity={0.9}/>)}
+          </Pie>
+          <Tooltip content={<CustomTooltip/>}/>
+          <Legend formatter={v => <span style={{ fontSize:11, color:"var(--text-secondary)", fontWeight:500 }}>{v}</span>}/>
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  )
 }

@@ -10,6 +10,12 @@ const {
  "../services/livePriceService"
 )
 
+const {
+ getAIPrediction,
+} = require(
+ "../services/aiPredictionService"
+)
+
 const YahooFinance =
  require("yahoo-finance2")
  .default
@@ -20,7 +26,18 @@ const yahooFinance =
 
 /*
 =====================================
- GET ALL STOCKS
+ GET ALL STOCKS — PAGINATED
+=====================================
+ Instead of fetching live prices for all ~500 screened
+ stocks on every request (slow, hits Yahoo Finance hard),
+ we screen the full list (fast, no network calls) but only
+ fetch live prices for the current page slice.
+
+ Query params:
+   page     - 1-indexed page number (default 1)
+   pageSize - stocks per page (default 25, max 100)
+   search   - optional symbol/company name filter
+   halal    - optional filter: "Halal" | "Non-Halal" | "Review Needed"
 =====================================
 */
 
@@ -35,29 +52,137 @@ const getAllStocks =
    =====================================
    */
 
-   const screenedStocks =
+   let screenedStocks =
     await getScreenedStocks()
 
 
    /*
    =====================================
-   GET SYMBOLS
+   OPTIONAL SEARCH FILTER
    =====================================
    */
 
-   const symbols =
+   const { search, halal } =
+    req.query
 
-    screenedStocks.map(
-     (stock) =>
-      stock.symbol
+
+   if (search) {
+
+    const term =
+     search.toLowerCase()
+
+    screenedStocks =
+     screenedStocks.filter(
+
+      (s) =>
+
+       s.symbol
+        ?.toLowerCase()
+        .includes(term)
+
+       ||
+
+       s.companyName
+        ?.toLowerCase()
+        .includes(term)
+
+     )
+
+   }
+
+
+   /*
+   =====================================
+   OPTIONAL HALAL STATUS FILTER
+   =====================================
+   */
+
+   if (halal) {
+
+    screenedStocks =
+     screenedStocks.filter(
+
+      (s) =>
+
+       s.halalStatus === halal
+
+     )
+
+   }
+
+
+   /*
+   =====================================
+   PAGINATION
+   =====================================
+   */
+
+   const page =
+    Math.max(
+
+     1,
+
+     parseInt(req.query.page) || 1
+
+    )
+
+
+   const pageSize =
+    Math.min(
+
+     100,
+
+     Math.max(
+
+      1,
+
+      parseInt(req.query.pageSize) || 25
+
+     )
+
+    )
+
+
+   const totalStocks =
+    screenedStocks.length
+
+
+   const totalPages =
+    Math.max(
+
+     1,
+
+     Math.ceil(totalStocks / pageSize)
+
+    )
+
+
+   const startIndex =
+    (page - 1) * pageSize
+
+
+   const pageSlice =
+    screenedStocks.slice(
+
+     startIndex,
+     startIndex + pageSize
+
     )
 
 
    /*
    =====================================
-   LIVE PRICES
+   LIVE PRICES — ONLY FOR THIS PAGE
    =====================================
    */
+
+   const symbols =
+
+    pageSlice.map(
+     (stock) =>
+      stock.symbol
+    )
+
 
    const livePrices =
     await getLivePrices(
@@ -69,11 +194,16 @@ const getAllStocks =
    =====================================
    MERGE STOCKS
    =====================================
+   No fake fallback formulas — if a live
+   quote genuinely fails, price/change are null
+   and the frontend shows "—" instead of a
+   second layer of fake numbers.
+   =====================================
    */
 
    const mergedStocks =
 
-    screenedStocks.map(
+    pageSlice.map(
      (stock) => {
 
       const liveData =
@@ -97,26 +227,10 @@ const getAllStocks =
        ...stock,
 
        price:
-
-        liveData?.price != null
-
-         ? liveData.price
-
-         : (
-            stock.symbol.length * 137
-           ) + 500,
-
+        liveData?.price ?? null,
 
        change:
-
-        liveData?.change != null
-
-         ? liveData.change
-
-         : (
-            (stock.symbol.length % 5)
-            + 0.75
-           ),
+        liveData?.change ?? null,
 
       }
 
@@ -126,13 +240,28 @@ const getAllStocks =
 
    /*
    =====================================
-   RESPONSE
+   RESPONSE WITH PAGINATION META
    =====================================
    */
 
-   res.json(
-    mergedStocks
-   )
+   res.json({
+
+    stocks:
+     mergedStocks,
+
+    pagination: {
+
+     page,
+
+     pageSize,
+
+     totalStocks,
+
+     totalPages,
+
+    },
+
+   })
 
   } catch (error) {
 
@@ -153,6 +282,12 @@ const getAllStocks =
 /*
 =====================================
  GET SINGLE STOCK
+=====================================
+ Includes the real AI prediction call — this
+ is the endpoint the stock detail page uses,
+ so it needs aiPrediction/aiSignal/aiConfidence/
+ rsi/riskScore/aiReason in the response, not
+ just price/change.
 =====================================
 */
 
@@ -227,6 +362,100 @@ const getStockBySymbol =
     livePrices[0]
 
 
+   const price =
+    liveData?.price ?? null
+
+   const change =
+    liveData?.change ?? null
+
+
+   /*
+   =====================================
+   REAL AI PREDICTION
+   =====================================
+   Calls the FastAPI ML microservice. If it
+   fails (service down, bad symbol, timeout),
+   fall back to a generic neutral object so
+   the page still renders something sensible
+   instead of crashing.
+   =====================================
+   */
+
+   let aiResult = {
+
+    prediction: 0,
+
+    signal: "Bearish",
+
+    confidence: 50,
+
+    risk_score: 50,
+
+    investment_strength: 50,
+
+    rsi: 50,
+
+    volatility: 30,
+
+    momentum: 10,
+
+    return_30d: 5,
+
+   }
+
+
+   try {
+
+    aiResult =
+     await getAIPrediction({
+
+      symbol:
+       stock.symbol,
+
+     })
+
+   } catch (aiError) {
+
+    console.log(
+     "AI Prediction Error for",
+     stock.symbol
+    )
+
+    console.log(
+     aiError.message
+    )
+
+   }
+
+
+   /*
+   =====================================
+   AI REASONING
+   =====================================
+   */
+
+   let aiReason = ""
+
+
+   if (
+    aiResult.prediction === 1
+   ) {
+
+    aiReason =
+
+     `${stock.companyName} currently shows bullish technical momentum supported by real-time RSI analysis, historical return trends, and machine learning confidence scoring.`
+
+   }
+
+   else {
+
+    aiReason =
+
+     `${stock.companyName} currently reflects weaker technical momentum and elevated volatility, leading to a cautious AI outlook.`
+
+   }
+
+
    /*
    =====================================
    RESPONSE
@@ -237,27 +466,68 @@ const getStockBySymbol =
 
     ...stock,
 
-    price:
+    /*
+    =====================================
+    LIVE MARKET DATA
+    =====================================
+    */
 
-     liveData?.price != null
+    price,
 
-      ? liveData.price
+    change,
 
-      : (
-         stock.symbol.length * 137
-        ) + 500,
+    /*
+    =====================================
+    AI ENGINE
+    =====================================
+    */
 
+    aiPrediction:
+     aiResult.prediction,
 
-    change:
+    aiSignal:
+     aiResult.signal,
 
-     liveData?.change != null
+    aiConfidence:
+     aiResult.confidence,
 
-      ? liveData.change
+    /*
+    =====================================
+    REAL TECHNICAL INDICATORS
+    =====================================
+    */
 
-      : (
-         (stock.symbol.length % 5)
-         + 0.75
-        ),
+    rsi:
+     aiResult.rsi,
+
+    volatility:
+     aiResult.volatility,
+
+    momentum:
+     aiResult.momentum,
+
+    return30d:
+     aiResult.return_30d,
+
+    /*
+    =====================================
+    AI SCORES
+    =====================================
+    */
+
+    riskScore:
+     aiResult.risk_score,
+
+    investmentStrength:
+     aiResult.investment_strength,
+
+    /*
+    =====================================
+    AI REASONING
+    =====================================
+    */
+
+    aiReason,
 
    })
 
@@ -459,6 +729,14 @@ const getStockHistory =
        Number(
         q.close.toFixed(2)
        ),
+
+      volume:
+
+       q.volume != null
+
+        ? q.volume
+
+        : null,
 
      }))
 

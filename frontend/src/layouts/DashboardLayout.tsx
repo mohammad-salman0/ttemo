@@ -1,73 +1,41 @@
-import Sidebar
- from "@/components/Sidebar"
+// src/layouts/DashboardLayout.tsx
+// Keep your existing folder structure — no need to move anything
+"use client"
 
-import DashboardNavbar
- from "@/components/DashboardNavbar"
+import Sidebar from "@/components/Sidebar"
+import DashboardNavbar from "@/components/DashboardNavbar"
 
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg-base)" }}>
 
-export default function DashboardLayout({
- children,
-}: {
- children: React.ReactNode
-}) {
+      {/* SIDEBAR — sticky, stays visible while page scrolls */}
+      <aside style={{
+        width: 256,
+        flexShrink: 0,
+        position: "sticky",
+        top: 0,
+        height: "100vh",
+        overflowY: "auto",
+        zIndex: 40,
+      }}>
+        <Sidebar />
+      </aside>
 
- return (
-
-  <div
-   className="
-    min-h-screen
-    bg-[#F8FAFC]
-   "
-  >
-
-   {/* SIDEBAR */}
-   <Sidebar />
-
-
-   {/* MAIN CONTENT */}
-   <div
-    className="
-     ml-[270px]
-     min-h-screen
-     flex
-     flex-col
-    "
-   >
-
-    {/* NAVBAR */}
-    <div
-     className="
-      sticky
-      top-0
-      z-40
-      bg-[#F8FAFC]/90
-      backdrop-blur
-      border-b
-      border-gray-200
-     "
-    >
-
-     <DashboardNavbar />
+      {/* MAIN CONTENT */}
+      <div style={{
+        flex: 1,
+        minWidth: 0,
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "100vh",
+      }}>
+        <DashboardNavbar />
+        <main style={{ flex: 1, padding: "28px 32px" }}>
+          {children}
+        </main>
+      </div>
 
     </div>
-
-
-    {/* PAGE CONTENT */}
-    <main
-     className="
-      flex-1
-      p-8
-     "
-    >
-
-     {children}
-
-    </main>
-
-   </div>
-
-  </div>
-
- )
-
+  )
 }

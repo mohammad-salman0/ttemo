@@ -1,7 +1,9 @@
+// src/app/about/page.tsx
 "use client"
 
 import Navbar from "@/components/Navbar"
 import Footer from "@/components/Footer"
+import { ShieldCheck, Brain, Globe } from "lucide-react"
 
 const pillars = [
   "AAOIFI-compliant Shariah screening",
@@ -10,221 +12,147 @@ const pillars = [
 ]
 
 const values = [
-  {
-    num: "01",
-    title: "Integrity",
-    desc: "Every screening decision is grounded in authentic Shariah scholarship and transparent methodology.",
-  },
-  {
-    num: "02",
-    title: "Innovation",
-    desc: "Cutting-edge AI models continuously refine our halal stock analysis and portfolio recommendations.",
-  },
-  {
-    num: "03",
-    title: "Accessibility",
-    desc: "Bringing institutional-grade ethical investing tools to everyday Muslim investors worldwide.",
-  },
+  { num: "01", title: "Integrity",     desc: "Every screening decision is grounded in authentic Shariah scholarship and transparent methodology.", accent: "var(--accent-teal)", icon: ShieldCheck },
+  { num: "02", title: "Innovation",    desc: "Cutting-edge AI models continuously refine our halal stock analysis and portfolio recommendations.", accent: "var(--indigo)",      icon: Brain },
+  { num: "03", title: "Accessibility", desc: "Bringing institutional-grade ethical investing tools to everyday Muslim investors worldwide.",        accent: "var(--warn)",       icon: Globe },
 ]
 
 const stats = [
   { value: "AAOIFI", label: "Standards" },
-  { value: "AI", label: "Powered" },
-  { value: "100%", label: "Halal Focus" },
+  { value: "AI",     label: "Powered" },
+  { value: "100%",   label: "Halal Focus" },
 ]
 
 const team = [
-  {
-    initials: "MS",
-    name: "Mohammad Salman",
-    role: "Founder & Vision Lead",
-    bio: "Focused on building ethical financial technology that bridges modern investing with Islamic financial values.",
-    photo: "/media/salman.JPG",
-  },
-  {
-    initials: "DF",
-    name: "Dawar Farooq",
-    role: "Lead Developer",
-    bio: "Responsible for the AI-powered halal screening engine, secure backend systems, and real-time fintech infrastructure.",
-    photo: "/media/Dawar.JPG",
-  },
+  { initials: "MS", name: "Mohammad Salman", role: "Founder & Vision Lead",  bio: "Focused on building ethical financial technology that bridges modern investing with Islamic financial values.",                                                       photo: "/media/salman.JPG" },
+  { initials: "DF", name: "Dawar Farooq",    role: "Lead Developer",         bio: "Responsible for the AI-powered halal screening engine, secure backend systems, and real-time fintech infrastructure.",                                               photo: "/media/Dawar.JPG" },
 ]
 
 export default function About() {
   return (
-    <div className="bg-[#FAFAF7]  text-[#1a1a14] overflow-x-hidden">
+    <div style={{ background: "var(--bg-base)", color: "var(--text-primary)", overflowX: "hidden" }}>
       <Navbar />
 
-      {/* ── HERO ── */}
-      <section className="py-20 px-6 max-w-[820px] mx-auto text-center">
-        <div className="inline-flex items-center gap-2 bg-[#E8F5EE] text-[#2D6A4F] text-[11px] font-medium tracking-[0.1em] uppercase px-4 py-1.5 rounded-full border border-[#B7DFC9] mb-8">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#2D6A4F]" />
+      {/* HERO */}
+      <section style={{ padding: "80px 24px", maxWidth: 800, margin: "0 auto", textAlign: "center" }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--accent-teal-bg)", color: "var(--accent-teal)", border: "1px solid var(--accent-teal-border)", fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", padding: "6px 16px", borderRadius: 999, marginBottom: 28 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent-teal)", display: "inline-block" }} />
           Ethical AI Investing Platform
         </div>
-
-        <h1 className="text-[64px] lg:text-[76px] leading-[1.05] tracking-[-0.01em] text-[#1a1a14] mb-6">
-          About <em className="not-italic text-[#2D6A4F]">Twin</em>Trade
+        <h1 style={{ fontSize: "clamp(48px, 8vw, 72px)", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.05, marginBottom: 20, fontFamily: "'Barlow', sans-serif" }}>
+          About <span style={{ color: "var(--accent-teal)" }}>Twin</span>Trade
         </h1>
-
-        <div className="w-10 h-px bg-[#2D6A4F] mx-auto my-8" />
-
-        <p className="text-[15px] leading-[1.85] text-[#666] max-w-[520px] mx-auto">
-          Combining ethical investing, artificial intelligence, and halal stock
-          screening into one powerful fintech platform designed for the modern
-          investor.
+        <div style={{ width: 40, height: 2, background: "var(--accent-teal)", margin: "24px auto" }} />
+        <p style={{ fontSize: 15, lineHeight: 1.85, color: "var(--text-muted)", maxWidth: 500, margin: "0 auto" }}>
+          Combining ethical investing, artificial intelligence, and halal stock screening into one powerful fintech platform designed for the modern investor.
         </p>
       </section>
 
-      {/* ── PLATFORM ── */}
-      <section className="py-16 px-6 max-w-[1100px] mx-auto grid lg:grid-cols-2 gap-20 items-center">
-        {/* Left */}
+      {/* PLATFORM */}
+      <section style={{ padding: "60px 24px", maxWidth: 1100, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }}>
         <div>
-          <p className="text-[10px] font-medium tracking-[0.14em] uppercase text-[#2D6A4F] mb-5">
-            Our Platform
-          </p>
-          <h2 className="text-[42px] leading-[1.15] text-[#1a1a14] mb-8">
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--accent-teal)", marginBottom: 16 }}>Our Platform</p>
+          <h2 style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.15, marginBottom: 24, fontFamily: "'Barlow', sans-serif" }}>
             Building the Future of Ethical Investing
           </h2>
-          <div className="space-y-5 text-[14px] leading-[1.9] text-[#666]">
-            <p>
-              TwinTrade helps investors discover halal investment opportunities
-              through advanced Shariah screening and AI-driven financial analysis.
-            </p>
-            <p>
-              Our platform evaluates companies using AAOIFI standards, sector
-              analysis, and intelligent portfolio insights — making ethical
-              investing more accessible and technologically advanced.
-            </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {["TwinTrade helps investors discover halal investment opportunities through advanced Shariah screening and AI-driven financial analysis.", "Our platform evaluates companies using AAOIFI standards, sector analysis, and intelligent portfolio insights — making ethical investing more accessible and technologically advanced."].map((p, i) => (
+              <p key={i} style={{ fontSize: 14, lineHeight: 1.9, color: "var(--text-muted)" }}>{p}</p>
+            ))}
           </div>
-          <ul className="mt-8 space-y-3">
-            {pillars.map((p) => (
-              <li key={p} className="flex items-center gap-3 text-[13px] text-[#444]">
-                <span className="w-2 h-2 rounded-full bg-[#2D6A4F] shrink-0" />
+          <ul style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 10 }}>
+            {pillars.map(p => (
+              <li key={p} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--text-secondary)" }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent-teal)", flexShrink: 0, display: "inline-block" }} />
                 {p}
               </li>
             ))}
           </ul>
         </div>
-
-        {/* Right — swap the div for <img> once assets load */}
-        <div className="relative">
-          <img
-            src="/media/shakinghands.jpg"
-            alt="TwinTrade partnership"
-            className="w-full aspect-[4/5] object-cover rounded-[4px] border border-[#B7DFC9]"
-          />
-          <div className="absolute -bottom-3.5 -right-3.5 bg-[#1a1a14] text-[#FAFAF7] text-[11px] tracking-[0.06em] px-4 py-2 rounded-[2px]">
+        <div style={{ position: "relative" }}>
+          <div style={{ height: 2, background: "linear-gradient(90deg, var(--accent-teal), transparent)", marginBottom: 0 }} />
+          <img src="/media/shakinghands.jpg" alt="TwinTrade partnership" style={{ width: "100%", aspectRatio: "4/5", objectFit: "cover", border: "1px solid var(--border)", filter: "brightness(0.95)" }} />
+          <div style={{ position: "absolute", bottom: 0, right: 0, background: "var(--text-primary)", color: "var(--bg-base)", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", padding: "6px 12px" }}>
             Est. 2024
           </div>
         </div>
       </section>
 
-      {/* ── MISSION ── */}
-      <section className="bg-[#1a1a14] py-20 px-6 text-center">
-        <p className="text-[10px] font-medium tracking-[0.14em] uppercase text-[#5FA882] mb-6">
-          Mission
-        </p>
-        <h2 className="text-[48px] lg:text-[56px] text-[#FAFAF7] leading-[1.2] max-w-[680px] mx-auto mb-0">
-          Empowering investors with{" "}
-          <em className="not-italic text-[#5FA882]">purpose</em>
+      {/* MISSION */}
+      <section style={{ background: "var(--bg-surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", padding: "80px 24px", textAlign: "center" }}>
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--indigo)", marginBottom: 20 }}>Mission</p>
+        <h2 style={{ fontSize: "clamp(36px, 6vw, 54px)", fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.15, maxWidth: 680, margin: "0 auto 0", fontFamily: "'Barlow', sans-serif" }}>
+          Empowering investors with <span style={{ color: "var(--indigo)" }}>purpose</span>
         </h2>
-        <div className="w-px h-12 bg-white/10 mx-auto my-8" />
-        <p className="text-[14px] leading-[1.9] text-white/50 max-w-[520px] mx-auto">
-          To empower Muslim investors worldwide with intelligent financial tools
-          that align with Islamic principles while leveraging the power of modern
-          AI and fintech innovation.
+        <div style={{ width: 1, height: 48, background: "var(--border)", margin: "28px auto" }} />
+        <p style={{ fontSize: 14, lineHeight: 1.9, color: "var(--text-muted)", maxWidth: 500, margin: "0 auto" }}>
+          To empower Muslim investors worldwide with intelligent financial tools that align with Islamic principles while leveraging the power of modern AI and fintech innovation.
         </p>
-
-        {/* Stats grid */}
-        <div
-          className="grid grid-cols-3 max-w-[600px] mx-auto mt-12"
-          style={{ borderTop: "0.5px solid rgba(250,250,247,0.1)", borderLeft: "0.5px solid rgba(250,250,247,0.1)" }}
-        >
-          {stats.map((s) => (
-            <div
-              key={s.label}
-              className="py-6"
-              style={{ borderRight: "0.5px solid rgba(250,250,247,0.1)", borderBottom: "0.5px solid rgba(250,250,247,0.1)" }}
-            >
-              <span className="text-[32px] text-[#FAFAF7] block">
-                {s.value}
-              </span>
-              <span className="text-[10px] tracking-[0.08em] uppercase text-white/30 mt-1 block">
-                {s.label}
-              </span>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", maxWidth: 600, margin: "48px auto 0", border: "1px solid var(--border)" }}>
+          {stats.map((s, i) => (
+            <div key={s.label} style={{ padding: "28px 0", borderRight: i < 2 ? "1px solid var(--border)" : "none" }}>
+              <span style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", display: "block", fontFamily: "'JetBrains Mono', monospace" }}>{s.value}</span>
+              <span style={{ fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)", marginTop: 6, display: "block" }}>{s.label}</span>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── VALUES ── */}
-      <section className="bg-[#F0F4F1] py-16 px-6">
-        <div className="max-w-[1100px] mx-auto">
-          <p className="text-[10px] font-medium tracking-[0.14em] uppercase text-[#2D6A4F] mb-8">
-            Core Values
-          </p>
-          <div className="grid md:grid-cols-3 gap-px">
-            {values.map((v) => (
-              <div key={v.num} className="bg-white border border-black/[0.06] p-10">
-                <div className="text-[52px] text-[#D4EBE0] leading-none mb-4">
-                  {v.num}
+      {/* VALUES */}
+      <section style={{ background: "var(--bg-base)", padding: "60px 24px" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--accent-teal)", marginBottom: 28 }}>Core Values</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 }}>
+            {values.map(v => {
+              const Icon = v.icon
+              return (
+                <div key={v.num} style={{
+                  background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12,
+                  padding: 32, borderTop: `3px solid ${v.accent}`,
+                  transition: "box-shadow 0.2s",
+                }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-md)" }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = "none" }}
+                >
+                  <div style={{ fontSize: 42, fontWeight: 800, color: "var(--border)", lineHeight: 1, marginBottom: 16, fontFamily: "'JetBrains Mono', monospace" }}>{v.num}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <Icon size={14} color={v.accent} />
+                    <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "0.02em" }}>{v.title}</h3>
+                  </div>
+                  <p style={{ fontSize: 13, lineHeight: 1.75, color: "var(--text-muted)" }}>{v.desc}</p>
                 </div>
-                <h3 className="text-[14px] font-medium text-[#1a1a14] mb-3 tracking-[0.02em]">
-                  {v.title}
-                </h3>
-                <p className="text-[13px] leading-[1.75] text-[#888]">
-                  {v.desc}
-                </p>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </section>
 
-      {/* ── TEAM ── */}
-      <section className="py-20 px-6 max-w-[1100px] mx-auto">
-        <div className="mb-12">
-          <p className="text-[10px] font-medium tracking-[0.14em] uppercase text-[#2D6A4F] mb-4">
-            The Team
-          </p>
-          <h2 className="text-[48px] text-[#1a1a14] leading-[1.1]">
+      {/* TEAM */}
+      <section style={{ padding: "60px 24px", maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ marginBottom: 40 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--accent-teal)", marginBottom: 12 }}>The Team</p>
+          <h2 style={{ fontSize: "clamp(32px,5vw,48px)", fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1, fontFamily: "'Barlow', sans-serif" }}>
             The people building TwinTrade
           </h2>
         </div>
-
-        <div className="grid md:grid-cols-2 gap-px">
-          {team.map((member) => (
-            <div
-              key={member.name}
-              className="bg-white border border-black/[0.08] p-10 flex gap-7 items-start hover:bg-[#F5F5F0] transition-colors duration-200"
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          {team.map(member => (
+            <div key={member.name} style={{
+              background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12,
+              padding: 28, display: "flex", gap: 20, alignItems: "flex-start",
+              transition: "box-shadow 0.2s",
+            }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-md)" }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = "none" }}
             >
-              {/* Avatar — shows photo if available, falls back to initials */}
-              <div className="shrink-0 w-20 h-20 rounded-full border border-[#B7DFC9] overflow-hidden bg-[#E8F5EE] flex items-center justify-center">
-                <img
-                  src={member.photo}
-                  alt={member.name}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const target = e.currentTarget
-                    target.style.display = "none"
-                    target.nextElementSibling?.classList.remove("hidden")
-                  }}
-                />
-                <span className="hidden  text-[22px] text-[#2D6A4F]">
-                  {member.initials}
-                </span>
+              <div style={{ width: 64, height: 64, borderRadius: "50%", border: "2px solid var(--accent-teal-border)", overflow: "hidden", background: "var(--accent-teal-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <img src={member.photo} alt={member.name} style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none" }} />
               </div>
-
               <div>
-                <h3 className="text-[26px] font-normal text-[#1a1a14] mb-1">
-                  {member.name}
-                </h3>
-                <span className="text-[11px] tracking-[0.1em] uppercase text-[#2D6A4F] font-medium block mb-4">
-                  {member.role}
-                </span>
-                <p className="text-[13px] leading-[1.8] text-[#777]">
-                  {member.bio}
-                </p>
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>{member.name}</h3>
+                <span style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--accent-teal)", fontWeight: 600, display: "block", marginBottom: 12 }}>{member.role}</span>
+                <p style={{ fontSize: 13, lineHeight: 1.8, color: "var(--text-muted)" }}>{member.bio}</p>
               </div>
             </div>
           ))}

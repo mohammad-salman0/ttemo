@@ -1,7 +1,14 @@
+const YahooFinance = require("yahoo-finance2").default;
+const yahooFinance = new YahooFinance();
+
 /*
 =====================================
- MOCK LIVE PRICE SERVICE
+ LIVE PRICE SERVICE (Yahoo Finance)
 =====================================
+ Replaces the old mock implementation. Uses the same
+ yahoo-finance2 library already used for candlestick
+ history in aiPredictionService.js, so both live price
+ and chart data now come from the same real source.
 */
 
 exports.getLivePrice =
@@ -9,45 +16,70 @@ exports.getLivePrice =
 
   try {
 
+   const quote =
+    await yahooFinance.quote(
+
+     `${symbol}.NS`
+
+    )
+
+
    /*
    =====================================
-   GENERATE REALISTIC MOCK PRICE
+   NO QUOTE RETURNED
    =====================================
    */
 
-   const basePrice =
+   if (!quote) {
 
-    (
-     symbol.length * 250
-    )
+    return {
 
-    +
+     price: null,
 
-    Math.floor(
-     Math.random() * 500
-    )
+     change: null,
+
+    }
+
+   }
 
 
    /*
    =====================================
-   RANDOM CHANGE %
+   PRICE
+   =====================================
+   */
+
+   const price =
+
+    quote.regularMarketPrice != null
+
+     ? Number(
+        quote.regularMarketPrice.toFixed(2)
+       )
+
+     : null
+
+
+   /*
+   =====================================
+   CHANGE %
    =====================================
    */
 
    const change =
 
-    Number(
+    quote.regularMarketChangePercent != null
 
-     (
-      (Math.random() * 6) - 3
-     ).toFixed(2)
+     ? Number(
+        quote.regularMarketChangePercent.toFixed(2)
+       )
 
-    )
+     : null
 
 
    return {
 
-    price: basePrice,
+    price,
 
     change,
 
@@ -55,13 +87,18 @@ exports.getLivePrice =
 
   } catch (error) {
 
-   console.log(error)
+   console.log(
+
+    `Yahoo Finance quote failed for ${symbol}:`,
+    error.message
+
+   )
 
    return {
 
-    price: 1000,
+    price: null,
 
-    change: 0,
+    change: null,
 
    }
 

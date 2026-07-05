@@ -17,6 +17,10 @@ from ta.momentum import RSIIndicator
 ========================================
  LOAD ML MODEL
 ========================================
+ Trained with train_model_final.py
+ 10 features: 6 original + 4 engineered
+ Accuracy: 79.05% | F1: 0.815
+========================================
 """
 
 model = joblib.load(
@@ -65,6 +69,12 @@ def root():
 """
 ========================================
  FEATURE EXTRACTION
+========================================
+ Extracts 10 features:
+   Original  : volatility, momentum, return_30d,
+               growth_score, halal_score, sector_strength
+   Engineered: sharpe_like, momentum_strength,
+               halal_quality, risk_adj_momentum
 ========================================
 """
 
@@ -312,6 +322,101 @@ def generate_features(symbol):
 
     """
     ========================================
+    ENGINEERED FEATURE 1
+    SHARPE-LIKE RATIO
+    ========================================
+    Return relative to volatility risk.
+    Higher = better risk-adjusted performance.
+    ========================================
+    """
+
+    sharpe_like = (
+
+        return_30d
+
+        /
+
+        (volatility + 1e-6)
+
+    )
+
+
+    """
+    ========================================
+    ENGINEERED FEATURE 2
+    MOMENTUM STRENGTH
+    ========================================
+    Momentum scaled by sector performance.
+    Captures how strong momentum is relative
+    to the broader sector context.
+    ========================================
+    """
+
+    momentum_strength = (
+
+        momentum
+
+        *
+
+        sector_strength
+
+        /
+
+        100
+
+    )
+
+
+    """
+    ========================================
+    ENGINEERED FEATURE 3
+    HALAL QUALITY
+    ========================================
+    Combined halal compliance and growth.
+    Higher = more ethically strong and
+    financially promising stock.
+    ========================================
+    """
+
+    halal_quality = (
+
+        halal_score
+
+        *
+
+        growth_score
+
+        /
+
+        100
+
+    )
+
+
+    """
+    ========================================
+    ENGINEERED FEATURE 4
+    RISK-ADJUSTED MOMENTUM
+    ========================================
+    Momentum per unit of volatility risk.
+    Top feature in trained model by
+    importance score (0.193).
+    ========================================
+    """
+
+    risk_adj_momentum = (
+
+        momentum
+
+        /
+
+        (volatility + 1e-6)
+
+    )
+
+
+    """
+    ========================================
     FINAL FEATURES
     ========================================
     """
@@ -335,6 +440,18 @@ def generate_features(symbol):
 
         "sector_strength":
         round(sector_strength, 2),
+
+        "sharpe_like":
+        round(sharpe_like, 4),
+
+        "momentum_strength":
+        round(momentum_strength, 4),
+
+        "halal_quality":
+        round(halal_quality, 4),
+
+        "risk_adj_momentum":
+        round(risk_adj_momentum, 4),
 
         "rsi":
         round(latest_rsi, 2),
@@ -369,6 +486,9 @@ def predict(data: PredictionInput):
         ========================================
         MODEL INPUT
         ========================================
+        IMPORTANT: order must exactly match
+        the FEATURES list in train_model_final.py
+        ========================================
         """
 
         features = np.array([[
@@ -383,7 +503,15 @@ def predict(data: PredictionInput):
 
             features_data["halal_score"],
 
-            features_data["sector_strength"]
+            features_data["sector_strength"],
+
+            features_data["sharpe_like"],
+
+            features_data["momentum_strength"],
+
+            features_data["halal_quality"],
+
+            features_data["risk_adj_momentum"],
 
         ]])
 

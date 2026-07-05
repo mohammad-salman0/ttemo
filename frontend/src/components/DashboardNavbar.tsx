@@ -1,15 +1,17 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Search, Bell, User, ChevronDown } from "lucide-react"
+import { Search, User, ChevronDown } from "lucide-react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import api from "@/services/api"
 import ThemeToggle from "@/components/ThemeToggle"
+import NotificationPanel from "@/components/NotificationPanel"
 
 type Stock = { symbol: string; companyName: string }
+type TickerItem = { sym: string; val: string; up: boolean }
 
-// Ticker data defined once outside the component — no array duplication
-const TICKER_ITEMS = [
+const FALLBACK_TICKER: TickerItem[] = [
   { sym: "NIFTY",    val: "+1.24%", up: true  },
   { sym: "SENSEX",   val: "+0.87%", up: true  },
   { sym: "RELIANCE", val: "+2841",  up: true  },
@@ -24,20 +26,43 @@ const TICKER_ITEMS = [
 
 export default function DashboardNavbar() {
   const router = useRouter()
-  const [query, setQuery] = useState("")
-  const [stocks, setStocks] = useState<Stock[]>([])
+
+  const [query,   setQuery]   = useState("")
+  const [stocks,  setStocks]  = useState<Stock[]>([])
   const [results, setResults] = useState<Stock[]>([])
   const [focused, setFocused] = useState(false)
+  const [ticker,  setTicker]  = useState<TickerItem[]>(FALLBACK_TICKER)
 
+  // Search pool
   useEffect(() => {
-    // Search needs a reasonably wide pool of symbols to match against,
-    // so request a larger page size here rather than the default 25 —
-    // this is a typeahead, not a paginated list view.
     api.get("/stocks", { params: { page: 1, pageSize: 100 } })
       .then(r => setStocks(r.data?.stocks || []))
       .catch(console.log)
   }, [])
 
+  // Live ticker
+  const fetchTicker = async () => {
+    try {
+      const res  = await api.get("/stocks", { params: { page: 1, pageSize: 25 } })
+      const live = (res.data?.stocks || [])
+        .filter((s: any) => s.price != null && s.change != null)
+        .slice(0, 10)
+        .map((s: any) => ({
+          sym: s.symbol,
+          val: `${s.change >= 0 ? "+" : ""}${s.change.toFixed(2)}%`,
+          up:  s.change >= 0,
+        }))
+      if (live.length > 0) setTicker(live)
+    } catch { /* keep fallback */ }
+  }
+
+  useEffect(() => {
+    fetchTicker()
+    const interval = setInterval(fetchTicker, 60_000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Search filter
   useEffect(() => {
     if (!query) { setResults([]); return }
     setResults(
@@ -50,14 +75,8 @@ export default function DashboardNavbar() {
     )
   }, [query, stocks])
 
-  // Navigates to the selected stock. Pulled out so it can be called
-  // from onMouseDown (fires before blur) instead of onClick (fires
-  // after blur), avoiding the race where the dropdown unmounts via
-  // the blur timeout before the click is ever registered.
   const goToStock = (symbol: string) => {
-    setQuery("")
-    setResults([])
-    setFocused(false)
+    setQuery(""); setResults([]); setFocused(false)
     router.push(`/stocks/${symbol}`)
   }
 
@@ -70,21 +89,14 @@ export default function DashboardNavbar() {
 
       {/* ── TICKER STRIP ── */}
       <div style={{ flex: 1, overflow: "hidden", maxWidth: 420 }}>
-        {/*
-          Duplicate the items once in CSS via the animation — NOT via [...Array(2)].
-          The ticker-track CSS animation handles the seamless loop by translating -50%,
-          so we just need the items listed twice in the DOM with unique keys.
-        */}
         <div className="ticker-track" style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500 }}>
-          {/* First copy */}
-          {TICKER_ITEMS.map((item) => (
+          {ticker.map(item => (
             <span key={`a-${item.sym}`} style={{ marginRight: 24, color: item.up ? "var(--up)" : "var(--down)" }}>
               <span style={{ color: "var(--text-secondary)", marginRight: 4 }}>{item.sym}</span>
               {item.val}
             </span>
           ))}
-          {/* Second copy — needed for seamless CSS loop */}
-          {TICKER_ITEMS.map((item) => (
+          {ticker.map(item => (
             <span key={`b-${item.sym}`} style={{ marginRight: 24, color: item.up ? "var(--up)" : "var(--down)" }}>
               <span style={{ color: "var(--text-secondary)", marginRight: 4 }}>{item.sym}</span>
               {item.val}
@@ -116,7 +128,6 @@ export default function DashboardNavbar() {
           />
         </div>
 
-        {/* Dropdown results */}
         {focused && results.length > 0 && (
           <div style={{
             position: "absolute", top: "calc(100% + 6px)", left: 0, width: "100%", zIndex: 99,
@@ -126,14 +137,7 @@ export default function DashboardNavbar() {
             {results.map((s, i) => (
               <button
                 key={s.symbol}
-                // onMouseDown fires BEFORE the input's onBlur, so navigation
-                // happens before the dropdown closes / focus is lost.
-                // preventDefault stops the click from stealing focus oddly
-                // and ensures this fires reliably on the first interaction.
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  goToStock(s.symbol)
-                }}
+                onMouseDown={e => { e.preventDefault(); goToStock(s.symbol) }}
                 style={{
                   width: "100%", textAlign: "left", padding: "10px 14px",
                   borderBottom: i < results.length - 1 ? "1px solid var(--border)" : "none",
@@ -154,34 +158,26 @@ export default function DashboardNavbar() {
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <ThemeToggle />
 
-        <button style={{
-          position: "relative", width: 36, height: 36, borderRadius: 8,
-          background: "var(--bg-hover)", border: "1.5px solid var(--border)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: "pointer", color: "var(--text-secondary)",
-        }}>
-          <Bell size={15} />
-          <span style={{
-            position: "absolute", top: 6, right: 6, width: 7, height: 7,
-            borderRadius: "50%", background: "var(--down)",
-            border: "1.5px solid var(--bg-surface)",
-          }} />
-        </button>
+        {/* Notification bell — now a real working component */}
+        <NotificationPanel />
 
-        <div style={{
-          display: "flex", alignItems: "center", gap: 8, padding: "6px 10px",
-          borderRadius: 8, border: "1.5px solid var(--border)",
-          background: "var(--bg-hover)", cursor: "pointer",
-        }}>
+        {/* Account → /profile */}
+        <Link href="/profile" style={{ textDecoration: "none" }}>
           <div style={{
-            width: 26, height: 26, borderRadius: 6, background: "var(--accent-teal)",
-            display: "flex", alignItems: "center", justifyContent: "center",
+            display: "flex", alignItems: "center", gap: 8, padding: "6px 10px",
+            borderRadius: 8, border: "1.5px solid var(--border)",
+            background: "var(--bg-hover)", cursor: "pointer",
           }}>
-            <User size={14} color="#fff" />
+            <div style={{
+              width: 26, height: 26, borderRadius: 6, background: "var(--accent-teal)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <User size={14} color="#fff" />
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>Account</span>
+            <ChevronDown size={12} color="var(--text-muted)" />
           </div>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>Account</span>
-          <ChevronDown size={12} color="var(--text-muted)" />
-        </div>
+        </Link>
       </div>
     </div>
   )

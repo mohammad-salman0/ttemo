@@ -1,8 +1,9 @@
-
 fastapi
 uvicorn
-pandas
-numpy
-scikit-learn
+pydantic
 joblib
+numpy
+pandas
+scikit-learn
 yfinance
+ta

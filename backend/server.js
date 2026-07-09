@@ -1,20 +1,14 @@
-require("dotenv").config()
+require("dotenv").config();
 
-const http =
- require("http")
+const http = require("http");
 
-const { Server } =
- require("socket.io")
+const { Server } = require("socket.io");
 
-const app =
- require("./src/app")
+const app = require("./src/app");
 
-const connectDB =
- require("./src/config/db")
+const connectDB = require("./src/config/db");
 
-const aiRoutes =
- require("./src/routes/aiRoutes")
-
+const aiRoutes = require("./src/routes/aiRoutes");
 
 /*
 ====================================
@@ -22,8 +16,7 @@ const aiRoutes =
 ====================================
 */
 
-connectDB()
-
+connectDB();
 
 /*
 ====================================
@@ -31,15 +24,9 @@ connectDB()
 ====================================
 */
 
-app.use(
- "/api/ai",
- aiRoutes
-)
+app.use("/api/ai", aiRoutes);
 
-
-const PORT =
- process.env.PORT || 5000
-
+const PORT = process.env.PORT || 5000;
 
 /*
 ====================================
@@ -47,9 +34,7 @@ const PORT =
 ====================================
 */
 
-const server =
- http.createServer(app)
-
+const server = http.createServer(app);
 
 /*
 ====================================
@@ -57,23 +42,45 @@ const server =
 ====================================
 */
 
-const io =
- new Server(server, {
+const allowedOrigins = ["http://localhost:3000", process.env.FRONTEND_URL];
 
+const io = new Server(server, {
   cors: {
-
-   origin:
-    "http://localhost:3000",
-
-   methods: [
-    "GET",
-    "POST",
-   ],
-
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST"],
+    credentials: true,
   },
+});
 
- })
+// const io = new Server(server, {
+//   cors: {
+//     origin: process.env.FRONTEND_URL,
+//     methods: ["GET", "POST"],
+//     credentials: true,
+//   },
+// });
+// const io =
+//  new Server(server, {
 
+//   cors: {
+
+//    origin:
+//     "http://localhost:3000",
+
+//    methods: [
+//     "GET",
+//     "POST",
+//    ],
+
+//   },
+
+//  })
 
 /*
 ====================================
@@ -82,33 +89,20 @@ const io =
 */
 
 io.on(
+  "connection",
 
- "connection",
+  (socket) => {
+    console.log("User connected");
 
- (socket) => {
+    socket.on(
+      "disconnect",
 
-  console.log(
-   "User connected"
-  )
-
-  socket.on(
-
-   "disconnect",
-
-   () => {
-
-    console.log(
-     "User disconnected"
-    )
-
-   }
-
-  )
-
- }
-
-)
-
+      () => {
+        console.log("User disconnected");
+      },
+    );
+  },
+);
 
 /*
 ====================================
@@ -117,7 +111,6 @@ io.on(
 ====================================
 */
 
-
 /*
 ====================================
  START SERVER
@@ -125,15 +118,9 @@ io.on(
 */
 
 server.listen(
+  PORT,
 
- PORT,
-
- () => {
-
-  console.log(
-   `Server running on port ${PORT}`
-  )
-
- }
-
-)
+  () => {
+    console.log(`Server running on port ${PORT}`);
+  },
+);

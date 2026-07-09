@@ -1,482 +1,323 @@
-"use client"
+"use client";
 
-import {
+import { createContext, useContext, useEffect, useState } from "react";
 
- createContext,
- useContext,
- useEffect,
- useState,
-
-} from "react"
-
-import api
- from "@/services/api"
-
+import api from "@/services/api";
 
 type Holding = {
+  symbol: string;
 
- symbol: string
+  quantity: number;
 
- quantity: number
+  averagePrice: number;
 
- averagePrice: number
+  currentPrice?: number;
 
- currentPrice?: number
+  currentValue?: number;
 
- currentValue?: number
+  profitLoss?: number;
 
- profitLoss?: number
+  returnPercentage?: number;
 
-}
+  allocationPercentage?: number;
+};
 
+// type Holding = {
+
+//  symbol: string
+
+//  quantity: number
+
+//  averagePrice: number
+
+//  currentPrice?: number
+
+//  currentValue?: number
+
+//  profitLoss?: number
+
+// }
 
 type Portfolio = {
+  balance: number;
 
- balance: number
+  investedAmount: number;
 
- investedAmount: number
+  totalProfit: number;
 
- totalProfit: number
+  currentPortfolioValue?: number;
 
- currentPortfolioValue?: number
+  totalReturnPercentage?: number;
 
- totalReturnPercentage?: number
-
- holdings: Holding[]
-
-}
-
+  holdings: Holding[];
+};
 
 type Order = {
+  symbol: string;
 
- symbol: string
+  orderType: "BUY" | "SELL";
 
- orderType:
-  | "BUY"
-  | "SELL"
+  quantity: number;
 
- quantity: number
+  price: number;
 
- price: number
-
- createdAt: string
-
-}
-
+  createdAt: string;
+};
 
 type PortfolioContextType = {
+  portfolio: Portfolio | null;
 
- portfolio:
-  Portfolio | null
+  orders: Order[];
 
- orders:
-  Order[]
+  loading: boolean;
 
- loading: boolean
+  refreshPortfolio: () => Promise<void>;
 
- refreshPortfolio:
-  () => Promise<void>
+  refreshOrders: () => Promise<void>;
+};
 
- refreshOrders:
-  () => Promise<void>
+const PortfolioContext = createContext<PortfolioContextType | null>(null);
 
-}
+export function PortfolioProvider({ children }: { children: React.ReactNode }) {
+  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
 
+  const [orders, setOrders] = useState<Order[]>([]);
 
-const PortfolioContext =
- createContext<PortfolioContextType | null>(
-  null
- )
+  const [loading, setLoading] = useState(true);
 
-
-export function
-PortfolioProvider({
-
- children,
-
-}: {
-
- children:
-  React.ReactNode
-
-}) {
-
- const [portfolio,
-  setPortfolio] =
-
-  useState<Portfolio | null>(
-   null
-  )
-
- const [orders,
-  setOrders] =
-
-  useState<Order[]>([])
-
- const [loading,
-  setLoading] =
-
-  useState(true)
-
-
- /*
+  /*
  ====================================
  FETCH PORTFOLIO
  ====================================
  */
 
- const refreshPortfolio =
-  async () => {
+  const refreshPortfolio = async () => {
+    try {
+      const token = localStorage.getItem("token");
 
-   try {
+      if (!token) {
+        setLoading(false);
 
-    const token =
-     localStorage.getItem(
-      "token"
-     )
+        return;
+      }
 
-    if (!token) {
-
-     setLoading(false)
-
-     return
-
-    }
-
-
-    /*
+      /*
     FETCH PORTFOLIO
     */
 
-    const response =
-     await api.get(
-      "/portfolio"
-     )
+      const response = await api.get("/portfolio");
 
-    const portfolioData =
-     response.data
+      const portfolioData = response.data;
 
-
-    /*
+      /*
     LIVE PORTFOLIO VALUE
     */
 
-    const currentPortfolioValue =
+      const currentPortfolioValue = portfolioData.holdings.reduce(
+        (acc: number, holding: Holding) =>
+          acc +
+          holding.quantity * (holding.currentPrice || holding.averagePrice),
 
-     portfolioData.holdings.reduce(
+        0,
+      );
 
-      (
-       acc: number,
-       holding: Holding
-      ) =>
-
-       acc +
-
-       (
-
-        holding.quantity *
-
-        (
-
-         holding.currentPrice
-         ||
-
-         holding.averagePrice
-
-        )
-
-       ),
-
-      0
-
-     )
-
-
-    /*
+      /*
     TOTAL INVESTED VALUE
     */
 
-    const investedValue =
+      const investedValue = portfolioData.holdings.reduce(
+        (acc: number, holding: Holding) =>
+          acc + holding.quantity * holding.averagePrice,
 
-     portfolioData.holdings.reduce(
+        0,
+      );
 
-      (
-       acc: number,
-       holding: Holding
-      ) =>
-
-       acc +
-
-       (
-        holding.quantity *
-        holding.averagePrice
-       ),
-
-      0
-
-     )
-
-
-    /*
+      /*
     TOTAL PROFIT
     */
 
-    const totalProfit =
-     Number(
+      const totalProfit = Number(
+        (currentPortfolioValue - investedValue).toFixed(2),
+      );
 
-      (
-       currentPortfolioValue
-       -
-       investedValue
-      ).toFixed(2)
-
-     )
-
-
-    /*
+      /*
     RETURN %
     */
 
-    const totalReturnPercentage =
+      const totalReturnPercentage =
+        investedValue > 0
+          ? Number(((totalProfit / investedValue) * 100).toFixed(2))
+          : 0;
 
-     investedValue > 0
-
-      ? Number(
-
-         (
-
-          (
-           totalProfit
-           /
-           investedValue
-          )
-
-          * 100
-
-         ).toFixed(2)
-
-        )
-
-      : 0
-
-
-    /*
+      /*
     UPDATE HOLDINGS LIVE VALUES
     */
 
-    const updatedHoldings =
+      const updatedHoldings = portfolioData.holdings.map((holding: Holding) => {
+        const currentPrice = holding.currentPrice || holding.averagePrice;
 
-     portfolioData.holdings.map(
+        const currentValue = Number(
+          (holding.quantity * currentPrice).toFixed(2),
+        );
 
-      (holding: Holding) => {
+        const invested = Number(
+          (holding.quantity * holding.averagePrice).toFixed(2),
+        );
 
-       const currentPrice =
+        const profitLoss = Number((currentValue - invested).toFixed(2));
 
-        holding.currentPrice
-        ||
-        holding.averagePrice
+        const returnPercentage =
+          invested > 0 ? Number(((profitLoss / invested) * 100).toFixed(2)) : 0;
 
+        const allocationPercentage =
+          currentPortfolioValue > 0
+            ? Number(((currentValue / currentPortfolioValue) * 100).toFixed(2))
+            : 0;
 
-       const currentValue =
-        Number(
+        return {
+          ...holding,
 
-         (
-          holding.quantity *
-          currentPrice
-         ).toFixed(2)
+          currentPrice,
 
-        )
+          currentValue,
 
+          profitLoss,
 
-       const invested =
-        Number(
+          returnPercentage,
 
-         (
-          holding.quantity *
-          holding.averagePrice
-         ).toFixed(2)
+          allocationPercentage,
+        };
+      });
 
-        )
+      //
 
+      // const updatedHoldings = portfolioData.holdings.map((holding: Holding) => {
+      //   const currentPrice = holding.currentPrice || holding.averagePrice;
 
-       const profitLoss =
-        Number(
+      //   const currentValue = Number(
+      //     (holding.quantity * currentPrice).toFixed(2),
+      //   );
 
-         (
-          currentValue
-          -
-          invested
-         ).toFixed(2)
+      //   const invested = Number(
+      //     (holding.quantity * holding.averagePrice).toFixed(2),
+      //   );
 
-        )
+      //   const profitLoss = Number((currentValue - invested).toFixed(2));
 
+      //   return {
+      //     ...holding,
 
-       return {
+      //     currentPrice,
 
-        ...holding,
+      //     currentValue,
 
-        currentPrice,
+      //     profitLoss,
+      //   };
+      // });
 
-        currentValue,
-
-        profitLoss,
-
-       }
-
-      }
-
-     )
-
-
-    /*
+      /*
     UPDATE PORTFOLIO STATE
     */
 
-    setPortfolio({
+      setPortfolio({
+        ...portfolioData,
 
-     ...portfolioData,
+        investedAmount: investedValue,
 
-     holdings:
-      updatedHoldings,
+        holdings: updatedHoldings,
 
-     totalProfit,
+        totalProfit,
 
-     currentPortfolioValue,
+        currentPortfolioValue,
 
-     totalReturnPercentage,
+        totalReturnPercentage,
+      });
+      // setPortfolio({
+      //   ...portfolioData,
 
-    })
+      //   holdings: updatedHoldings,
 
-   } catch (error) {
+      //   totalProfit,
 
-    console.log(error)
+      //   currentPortfolioValue,
 
-   } finally {
+      //   totalReturnPercentage,
+      // });
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    setLoading(false)
-
-   }
-
-  }
-
-
- /*
+  /*
  ====================================
  FETCH ORDERS
  ====================================
  */
 
- const refreshOrders =
-  async () => {
+  const refreshOrders = async () => {
+    try {
+      const token = localStorage.getItem("token");
 
-   try {
+      if (!token) return;
 
-    const token =
-     localStorage.getItem(
-      "token"
-     )
+      const response = await api.get("/orders");
 
-    if (!token) return
+      setOrders(response.data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
-    const response =
-     await api.get(
-      "/orders"
-     )
-
-    setOrders(
-     response.data
-    )
-
-   } catch (error) {
-
-    console.log(error)
-
-   }
-
-  }
-
-
- /*
+  /*
  ====================================
  INITIAL LOAD
  ====================================
  */
 
- useEffect(() => {
+  useEffect(() => {
+    refreshPortfolio();
 
-  refreshPortfolio()
+    refreshOrders();
+  }, []);
 
-  refreshOrders()
-
- }, [])
-
-
- /*
+  /*
  ====================================
  AUTO REFRESH
  ====================================
  */
 
- useEffect(() => {
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshPortfolio();
+    }, 30000);
 
-  const interval =
+    return () => clearInterval(interval);
+  }, []);
 
-   setInterval(() => {
+  return (
+    <PortfolioContext.Provider
+      value={{
+        portfolio,
+        orders,
+        loading,
 
-    refreshPortfolio()
-
-   }, 30000)
-
-
-  return () =>
-   clearInterval(interval)
-
- }, [])
-
-
- return (
-
-  <PortfolioContext.Provider
-
-   value={{
-
-    portfolio,
-    orders,
-    loading,
-
-    refreshPortfolio,
-    refreshOrders,
-
-   }}
-  >
-
-   {children}
-
-  </PortfolioContext.Provider>
-
- )
-
+        refreshPortfolio,
+        refreshOrders,
+      }}
+    >
+      {children}
+    </PortfolioContext.Provider>
+  );
 }
 
+export const usePortfolio = () => {
+  const context = useContext(PortfolioContext);
 
-export const
-usePortfolio = () => {
+  if (!context) {
+    throw new Error("usePortfolio must be used inside PortfolioProvider");
+  }
 
- const context =
-  useContext(
-   PortfolioContext
-  )
-
- if (!context) {
-
-  throw new Error(
-
-   "usePortfolio must be used inside PortfolioProvider"
-
-  )
-
- }
-
- return context
-
-}
+  return context;
+};
